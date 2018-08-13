@@ -32,6 +32,7 @@ private:
 	bool m_help = false;
 	bool m_re_invert_fields = false;
 	std::string m_delimiter;
+	std::string m_regex;
 	std::string m_re_search;
 	std::string m_re_replace;
 	std::vector<unsigned> m_re_fields;
@@ -107,6 +108,7 @@ void ArgManager::setValue(const std::string& option, const std::string& value)
 	} else if (option == "-p") {
 		m_re_fields = splitFields(value);
 	} else if (option == "-x") {
+		m_regex = value;
 		std::tie(m_re_search, m_re_replace) = splitRegex(value);
 	} else {
 		std::runtime_error("Unhandled option '" + option + "'");
@@ -122,10 +124,12 @@ void ArgManager::flagError(const std::string& msg)
 
 void ArgManager::validateArgs()
 {
-	if (m_re_fields.size() > 0 && m_re_search == "") {
+	if (m_re_fields.size() > 0 && m_regex == "") {
 		flagError("Option -p requires option -x.");
-	} else if (m_re_fields.size() == 0 && m_re_invert_fields) {
+	} else if (m_re_invert_fields && m_re_fields.size() == 0) {
 		flagError("Option -i requires option -p.");
+	} else if (m_re_search == "") {
+		flagError("Option -x requires a valid non-empty search pattern.");
 	}
 }
 
@@ -206,9 +210,26 @@ std::vector<unsigned> ArgManager::splitFields(const std::string& arg_val) const
 
 std::tuple<std::string, std::string> ArgManager::splitRegex(const std::string& arg_val) const
 {
-	std::regex r("s/(.*)/(.*)/");
-	std::smatch pieces;
-	std::regex_match(arg_val, pieces, r);
-	return std::make_tuple(pieces[1], pieces[2]);
+	std::string search;
+	std::string replace;
+
+	std::smatch parts;
+	std::regex match_re("s/(.*)/(.*)/");
+	if (std::regex_match(arg_val, parts, match_re)) {
+		search = parts[1];
+
+		// Properly escape sequence \/
+		std::regex clean_slash("\\\\(/)");
+		search = std::regex_replace(search, clean_slash, "$01");
+
+		// Properly escape double backslash sequence (\\)
+		std::regex clean_backslash("\\\\\\\\");
+		search = std::regex_replace(search, clean_backslash, "\\\\\\\\");
+
+		replace = parts[2];
+	}
+
+	return std::make_tuple(search, replace);
 }
+
 #endif //JM_ARG_MANAGER_HPP
