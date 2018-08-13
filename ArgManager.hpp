@@ -85,13 +85,13 @@ void ArgManager::readArgs(int argc, char **argv)
 
 bool ArgManager::isUnaryOption(const std::string& option) const
 {
-	std::vector<std::string> unary = {"-h", "-i"};
+	static const std::vector<std::string> unary = {"-h", "-i"};
 	return (std::find(unary.begin(), unary.end(), option) != unary.end());
 }
 
 bool ArgManager::isBinaryOption(const std::string& option) const
 {
-	std::vector<std::string> binary = {"-d", "-f", "-p", "-x"};
+	static const std::vector<std::string> binary = {"-d", "-f", "-p", "-x"};
 	return (std::find(binary.begin(), binary.end(), option) != binary.end());
 }
 
