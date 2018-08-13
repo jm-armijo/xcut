@@ -7,7 +7,7 @@
 #include <vector>
 
 enum class State {inv, arg, val};
-enum class Argument {invalid, h, d, f, p, i, x};
+enum class Argument {h, d, f, p, i, x};
 
 class ArgManager {
 public:
