@@ -2,136 +2,194 @@
 #define JM_ARG_MANAGER_HPP
 
 #include <regex>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
+enum class State {inv, arg, val};
+enum class Argument {h, d, f, p, i, x};
+
 class ArgManager {
 public:
-	ArgManager();
+	// Entry point to start reading and processing arguments
 	void readArgs(int argc, char **argv);
 
-	bool helpRequested() const;
-	void showHelp() const;
+	// Getter functions
+	bool getHelp() const;
+	void printHelp() const;
 	std::string getDelimiter() const;
-	std::vector<unsigned> getFields() const;
+	std::string getRegExSearch() const;
+	std::string getRegExReplace() const;
 	std::vector<unsigned> getRegExFields() const;
-	bool inverseRegExFields() const;
-	std::vector<std::string> splitRegex() const;
+	std::vector<unsigned> getFields() const;
+	bool getInverseRegExFields() const;
 
 private:
+	// Stores the overal status of the argument reading operation
+	bool m_read_ok = true;
+
+	// Options storage
+	bool m_help = false;
+	bool m_re_invert_fields = false;
+	std::string m_delimiter;
+	std::string m_regex;
+	std::string m_re_search;
+	std::string m_re_replace;
+	std::vector<unsigned> m_re_fields;
+	std::vector<unsigned> m_fields;
+
+private:
+	// Methods to read arguments
+	bool isUnaryOption(const std::string& option) const;
+	bool isBinaryOption(const std::string& option) const;
+	void setValue(const std::string& option, const std::string& value);
+	void flagError(const std::string& msg);
+	void validateArgs();
+
+	// Methods to process arguments
 	std::vector<unsigned> splitFields(const std::string& arg_val) const;
+	std::tuple<std::string, std::string> splitRegex(const std::string& arg_val) const;
 
-private:
-	enum class State {arg, val};
-	enum class Argument {invalid, h, d, f, p, i, x};
-	std::unordered_map<std::string, std::string> m_arg_vals;
-	std::unordered_map<std::string, Argument>    m_arg_enum;
 };
-
-ArgManager::ArgManager()
-{
-	m_arg_vals["-d"] = " ";
-	m_arg_vals["-f"] = "0";
-	m_arg_vals["-p"] = "";
-	m_arg_vals["-i"] = "0";
-	m_arg_vals["-x"] = "";
-	m_arg_vals["-h"] = "";
-
-	m_arg_enum["-d"] = Argument::d;
-	m_arg_enum["-f"] = Argument::f;
-	m_arg_enum["-p"] = Argument::p;
-	m_arg_enum["-i"] = Argument::i;
-	m_arg_enum["-x"] = Argument::x;
-	m_arg_enum["-h"] = Argument::h;
-
-}
 
 void ArgManager::readArgs(int argc, char **argv)
 {
 	auto state = State::arg;
 	std::string option = "";
-	std::string error = "";
 
 	for(auto i=1; i<argc; ++i) {
 		if (state == State::arg) {
-			option = argv[i];
 
-			switch (m_arg_enum[option]) {
-				case Argument::d:
-				case Argument::f:
-				case Argument::p:
-				case Argument::x:
-					state = State::val;
-					break;
-				case Argument::i:
-					m_arg_vals["-i"] = "1";
-					break;
-				case Argument::h:
-					m_arg_vals["-h"] = "1";
-					break;
-				default:
-					std::cerr << "recut: Invalid option '" + option + "'\n" << std::endl;
-					m_arg_vals["-h"] = "1"; // show help on error
-					i = argc;               // exit the loop
+			option = argv[i];
+			if (isUnaryOption(option)) {
+				setValue(option, "1");
+			} else if (isBinaryOption(option)) {
+				state = State::val;
+			} else {
+				flagError("Invalid option '" + option + "'");
+				i = argc; // exit the loop
 			}
+
 		} else {
-			m_arg_vals[option] = argv[i];
+			setValue(option, argv[i]);
 			state = State::arg;
 		}
 	}
 
-	if (m_arg_vals["-p"] != "" && m_arg_vals["-x"] == "") {
-		std::cerr << "recut: Option -p requires option -x.\n" << std::endl;
-		m_arg_vals["-h"] = "1"; // show help on error
-	} else if (m_arg_vals["-p"] == "" && m_arg_vals["-x"] != "") {
-		std::cerr << "recut: Option -x requires option -p.\n" << std::endl;
-		m_arg_vals["-h"] = "1"; // show help on error
-	} else if (m_arg_vals["-i"] != "" && m_arg_vals["-p"] == "") {
-		std::cerr << "recut: Option -i requires option -p.\n" << std::endl;
-		m_arg_vals["-h"] = "1"; // show help on error
+	if (m_read_ok && state == State::val) {
+		flagError("Expected value for option '" + option + "'");
+	} else if (m_read_ok) {
+		validateArgs();
 	}
 }
 
-bool ArgManager::helpRequested() const
+bool ArgManager::isUnaryOption(const std::string& option) const
 {
-	return (m_arg_vals.at("-h") == "1");
+	static const std::vector<std::string> unary = {"-h", "-i"};
+	return (std::find(unary.begin(), unary.end(), option) != unary.end());
 }
 
-void ArgManager::showHelp() const
+bool ArgManager::isBinaryOption(const std::string& option) const
 {
-	std::cout << "Usage: recut OPTION... [FILE]...\n" << std::endl;
-	std::cout << "With no FILE read standard input.\n" << std::endl;
-	std::cout << "Arguments:\n" << std::endl;
-	std::cout << "  -h: This help" << std::endl;
-	std::cout << "  -d DELIM: use DELIM instead of space for field delimiter." << std::endl;
-	std::cout << "  -f FIELDS: comma separated list of fiels to be returned (1-index base)." << std::endl;
-	std::cout << "  -p FIELDS: comma separated list of fiels to process with the regex passed in option -x (1-index base)" << std::endl;
-	std::cout << "  -x: Regular expression to apply to fields listed in option -p." << std::endl;
-	std::cout << "  -i: Invert field's list passed in option -p" << std::endl;
-	std::cout << "  -h: This help" << std::endl;
+	static const std::vector<std::string> binary = {"-d", "-f", "-p", "-x"};
+	return (std::find(binary.begin(), binary.end(), option) != binary.end());
+}
+
+void ArgManager::setValue(const std::string& option, const std::string& value)
+{
+	if (option == "-h") {
+		m_help = (value == "1");
+	} else if (option == "-i") {
+		m_re_invert_fields = (value == "1");
+	} else if (option == "-d") {
+		m_delimiter = value;
+	} else if (option == "-f") {
+		m_fields = splitFields(value);
+	} else if (option == "-p") {
+		m_re_fields = splitFields(value);
+	} else if (option == "-x") {
+		m_regex = value;
+		std::tie(m_re_search, m_re_replace) = splitRegex(value);
+	} else {
+		std::runtime_error("Unhandled option '" + option + "'");
+	}
+}
+
+void ArgManager::flagError(const std::string& msg)
+{
+	std::cerr << "xcut: " << msg << "'\n" << std::endl;
+	m_read_ok = false;
+	m_help = true;
+}
+
+void ArgManager::validateArgs()
+{
+	if (m_re_fields.size() > 0 && m_regex == "") {
+		flagError("Option -p requires option -x.");
+	} else if (m_re_invert_fields && m_re_fields.size() == 0) {
+		flagError("Option -i requires option -p.");
+	} else if (m_re_search == "") {
+		flagError("Option -x requires a valid non-empty search pattern.");
+	}
+}
+
+
+// Getter functions
+bool ArgManager::getHelp() const
+{
+	return m_help;
+}
+
+void ArgManager::printHelp() const
+{
+	std::cout << "Usage: xcut OPTION... < [FILE]...\n";
+	std::cout << "From each FILE, replaces text on all or selected parts of lines using PATTERN,\n";
+	std::cout << "and print all or selected parts to standard output.\n\n";
+
+	std::cout << "Example: xcut -f 1,2 -x 's/\\d/<num>/' < file.txt\n\n";
+
+	std::cout << "Options\n";
+	std::cout << "  -d DELIM    Use DELIM instead of SPACE for field delimiter.\n";
+	std::cout << "  -f FIELDS   Comma separated list of fiels to print (1-index base).\n";
+	std::cout << "  -p FIELDS   Comma separated list of fiels to apply PATTERN to. (1-index base)\n";
+	std::cout << "  -x PATTERN  sed like Regular Expression to be applied on all or specified parts.\n";
+	std::cout << "  -i          Apply PATTERN to inversed -p list\n";
+	std::cout << "  -h          This help\n";
+
+	std::cout << "All options are optional, excep in these cases:\n";
+	std::cout << "    If option -p is used, option -x becomes mandatory\n";
+	std::cout << "    If option -i is used, option -x becomes mandatory\n";
+	std::cout << std::flush;
 }
 
 std::string ArgManager::getDelimiter() const
 {
-	return m_arg_vals.at("-d");
+	return m_delimiter;
 }
 
 std::vector<unsigned> ArgManager::getFields() const
 {
-	auto arg_val = m_arg_vals.at("-f");
-	return splitFields(arg_val);
+	return m_fields;
 }
 
 std::vector<unsigned> ArgManager::getRegExFields() const
 {
-	auto arg_val = m_arg_vals.at("-p");
-	return splitFields(arg_val);
+	return m_re_fields;
 }
 
-bool ArgManager::inverseRegExFields() const
+std::string ArgManager::getRegExSearch() const
 {
-	auto arg_val = m_arg_vals.at("-i");
-	return (arg_val == "1");
+	return m_re_search;
+}
+
+std::string ArgManager::getRegExReplace() const
+{
+	return m_re_replace;
+}
+
+bool ArgManager::getInverseRegExFields() const
+{
+	return m_re_invert_fields;
 }
 
 std::vector<unsigned> ArgManager::splitFields(const std::string& arg_val) const
@@ -150,17 +208,28 @@ std::vector<unsigned> ArgManager::splitFields(const std::string& arg_val) const
 	return fields;
 }
 
-std::vector<std::string> ArgManager::splitRegex() const
+std::tuple<std::string, std::string> ArgManager::splitRegex(const std::string& arg_val) const
 {
-	auto arg_val = m_arg_vals.at("-x");
+	std::string search;
+	std::string replace;
 
-	std::regex r("s/(.*)/(.*)/");
-	std::smatch pieces;
-	std::regex_match(arg_val, pieces, r);
-	std::vector<std::string> response;
-	response.push_back(pieces[1]);
-	response.push_back(pieces[2]);
+	std::smatch parts;
+	std::regex match_re("s/(.*)/(.*)/");
+	if (std::regex_match(arg_val, parts, match_re)) {
+		search = parts[1];
 
-	return response;
+		// Properly escape sequence \/
+		std::regex clean_slash("\\\\(/)");
+		search = std::regex_replace(search, clean_slash, "$01");
+
+		// Properly escape double backslash sequence (\\)
+		std::regex clean_backslash("\\\\\\\\");
+		search = std::regex_replace(search, clean_backslash, "\\\\\\\\");
+
+		replace = parts[2];
+	}
+
+	return std::make_tuple(search, replace);
 }
+
 #endif //JM_ARG_MANAGER_HPP

@@ -38,20 +38,18 @@ std::istream& InputReader::readLine()
 
 void InputReader::processLine(const ArgManager& arg_manager)
 {
-	auto delimiter = arg_manager.getDelimiter();
-	auto fields    = arg_manager.getFields();
-	auto re_fields = arg_manager.getRegExFields();
-	auto regex     = arg_manager.splitRegex();
-	auto inverse   = arg_manager.inverseRegExFields();
+	auto delimiter  = arg_manager.getDelimiter();
+	auto fields     = arg_manager.getFields();
+	auto re_fields  = arg_manager.getRegExFields();
+	auto re_search  = arg_manager.getRegExSearch();
+	auto re_replace = arg_manager.getRegExReplace();
+	auto inverse    = arg_manager.getInverseRegExFields();
 
-	std::cout << regex[0] << ":" << regex[1] << std::endl;
-
-	return;
 	// split the word
 	m_line.split(delimiter);
 
 	// process the required parts, if any
-	m_line.process(re_fields, regex[1], inverse);
+	m_line.process(re_fields, re_search, re_replace, inverse);
 
 	// join requested fields
 	std::cout << m_line.join(delimiter, fields) << std::endl;

@@ -8,8 +8,8 @@ int main(int argc, char **argv)
 	ArgManager arg_manager;
 	arg_manager.readArgs(argc, argv);
 
-	if (arg_manager.helpRequested()) {
-		arg_manager.showHelp();
+	if (arg_manager.getHelp()) {
+		arg_manager.printHelp();
 		return 1;
 	}
 
