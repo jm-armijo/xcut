@@ -128,7 +128,7 @@ void ArgManager::validateArgs()
 		flagError("Option -p requires option -x.");
 	} else if (m_re_invert_fields && m_re_fields.size() == 0) {
 		flagError("Option -i requires option -p.");
-	} else if (m_re_search == "") {
+	} else if (m_re_search != "" && m_re_fields.size() == 0) {
 		flagError("Option -x requires a valid non-empty search pattern.");
 	}
 }
