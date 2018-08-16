@@ -7,9 +7,9 @@
 
 #include "Line.hpp"
 
-class InputReader {
+class DataProcessor {
 public:
-	static InputReader getInstance();
+	static DataProcessor getInstance();
 	std::istream& readLine();
 	void processLine(const ArgManager& arg_manager);
 
@@ -19,16 +19,16 @@ private:
 	std::vector<unsigned> m_fields;
 
 private:
-	InputReader() {}
+	DataProcessor() {}
 };
 
-InputReader InputReader::getInstance()
+DataProcessor DataProcessor::getInstance()
 {
-	static InputReader instance;
+	static DataProcessor instance;
 	return instance;
 }
 
-std::istream& InputReader::readLine()
+std::istream& DataProcessor::readLine()
 {
 	std::string line;
 	auto& stream = std::getline(std::cin, line);
@@ -36,7 +36,7 @@ std::istream& InputReader::readLine()
 	return stream;
 }
 
-void InputReader::processLine(const ArgManager& arg_manager)
+void DataProcessor::processLine(const ArgManager& arg_manager)
 {
 	auto delimiter  = arg_manager.getDelimiter();
 	auto fields     = arg_manager.getFields();

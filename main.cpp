@@ -1,4 +1,4 @@
-#include "InputReader.hpp"
+#include "DataProcessor.hpp"
 #include "ArgManager.hpp"
 #include <stdexcept>
 
@@ -13,9 +13,9 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	InputReader reader = InputReader::getInstance();
-	while (reader.readLine()) {
-		reader.processLine(arg_manager);
+	DataProcessor processor = DataProcessor::getInstance();
+	while (processor.readLine()) {
+		processor.processLine(arg_manager);
 	}
 
 	return 0;
