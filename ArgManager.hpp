@@ -210,11 +210,12 @@ std::vector<unsigned> ArgManager::splitFields(const std::string& arg_val) const
 
 std::tuple<std::string, std::string> ArgManager::splitRegex(const std::string& arg_val) const
 {
+	static const std::regex match_re("s/(.*)/(.*)/");
+
 	std::string search;
 	std::string replace;
 
 	std::smatch parts;
-	std::regex match_re("s/(.*)/(.*)/");
 	if (std::regex_match(arg_val, parts, match_re)) {
 		search = parts[1];
 

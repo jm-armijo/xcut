@@ -84,7 +84,7 @@ bool Line::find(unsigned needle, const uvec& haystack) const
 void Line::processPart(int part_num, const str& re_search, const str& re_replace)
 {
 	try {
-		std::regex r(re_search);
+		static const std::regex r(re_search);
 		m_parts[part_num] = std::regex_replace(m_parts[part_num], r, re_replace);
 	} catch (...) {}
 }
