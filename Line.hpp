@@ -16,7 +16,7 @@ public:
 	Line() {}
 	Line(const str& line);
 	void split(const str& delimiter);
-	void process(const uvec& re_fields, const str& re_search, const str& re_replace, bool inverse);
+	std::string process(const ArgManager& arg_manager);
 	str join(const str& delimiter, const uvec& fields);
 
 private:
@@ -57,8 +57,18 @@ unsigned Line::getNumParts() const
 	return m_parts.size();
 }
 
-void Line::process(const uvec& re_fields, const str& re_search, const str& re_replace, bool inverse)
+std::string Line::process(const ArgManager& arg_manager)
 {
+	auto delimiter  = arg_manager.getDelimiter();
+	auto fields     = arg_manager.getFields();
+	auto re_fields  = arg_manager.getRegExFields();
+	auto re_search  = arg_manager.getRegExSearch();
+	auto re_replace = arg_manager.getRegExReplace();
+	auto inverse    = arg_manager.getInverseRegExFields();
+
+	// split the word
+	split(delimiter);
+
 	for (auto i = 0u; i<getNumParts(); ++i) {
 		bool process = false;
 
@@ -74,6 +84,9 @@ void Line::process(const uvec& re_fields, const str& re_search, const str& re_re
 			processPart(i, re_search, re_replace);
 		}
 	}
+
+	// join requested fields and save string
+	return join(delimiter, fields);
 }
 
 bool Line::find(unsigned needle, const uvec& haystack) const
