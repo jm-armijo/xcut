@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 	std::thread reader = std::thread(&DataProcessor::readLines, &processor);
 
 	// Print output lines
-	std::thread printer = std::thread(&DataProcessor::printOutput, &processor);
+	std::thread printer = std::thread(&DataProcessor::printOutput, &processor, arg_manager);
 
 	// Process lines
 	processor.processLines(arg_manager);

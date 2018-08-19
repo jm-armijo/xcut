@@ -7,7 +7,7 @@
 #include <vector>
 
 enum class State {inv, arg, val};
-enum class Argument {h, d, f, p, i, x};
+enum class Argument {h, d, f, p, i, x, s};
 
 class ArgManager {
 public:
@@ -23,6 +23,7 @@ public:
 	std::vector<unsigned> getRegExFields() const;
 	std::vector<unsigned> getFields() const;
 	bool getInverseRegExFields() const;
+	bool sortOutput() const {return m_sort;}
 
 private:
 	// Stores the overal status of the argument reading operation
@@ -31,6 +32,7 @@ private:
 	// Options storage
 	bool m_help = false;
 	bool m_re_invert_fields = false;
+	bool m_sort = false;
 	std::string m_delimiter;
 	std::string m_regex;
 	std::string m_re_search;
@@ -85,7 +87,7 @@ void ArgManager::readArgs(int argc, char **argv)
 
 bool ArgManager::isUnaryOption(const std::string& option) const
 {
-	static const std::vector<std::string> unary = {"-h", "-i"};
+	static const std::vector<std::string> unary = {"-h", "-i", "-s"};
 	return (std::find(unary.begin(), unary.end(), option) != unary.end());
 }
 
@@ -101,6 +103,8 @@ void ArgManager::setValue(const std::string& option, const std::string& value)
 		m_help = (value == "1");
 	} else if (option == "-i") {
 		m_re_invert_fields = (value == "1");
+	} else if (option == "-s") {
+		m_sort = (value == "1");
 	} else if (option == "-d") {
 		m_delimiter = value;
 	} else if (option == "-f") {
@@ -154,6 +158,7 @@ void ArgManager::printHelp() const
 	std::cout << "  -p FIELDS   Comma separated list of fiels to apply PATTERN to. (1-index base)\n";
 	std::cout << "  -x PATTERN  sed like Regular Expression to be applied on all or specified parts.\n";
 	std::cout << "  -i          Apply PATTERN to inversed -p list\n";
+	std::cout << "  -s          Output lines sorted in the original order.\n";
 	std::cout << "  -h          This help\n";
 
 	std::cout << "All options are optional, excep in these cases:\n";
