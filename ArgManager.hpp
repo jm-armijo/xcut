@@ -33,7 +33,7 @@ private:
 	bool m_help = false;
 	bool m_re_invert_fields = false;
 	bool m_sort = false;
-	std::string m_delimiter;
+	std::string m_delimiter = " ";
 	std::string m_regex;
 	std::string m_re_search;
 	std::string m_re_replace;
@@ -121,9 +121,8 @@ void ArgManager::setValue(const std::string& option, const std::string& value)
 
 void ArgManager::flagError(const std::string& msg)
 {
-	std::cerr << "xcut: " << msg << "'\n" << std::endl;
+	std::cerr << "xcut: " << msg << "\n" << std::endl;
 	m_read_ok = false;
-	m_help = true;
 }
 
 void ArgManager::validateArgs()
@@ -132,7 +131,7 @@ void ArgManager::validateArgs()
 		flagError("Option -p requires option -x.");
 	} else if (m_re_invert_fields && m_re_fields.size() == 0) {
 		flagError("Option -i requires option -p.");
-	} else if (m_re_search != "" && m_re_fields.size() == 0) {
+	} else if (m_regex != "" && m_re_search == "") {
 		flagError("Option -x requires a valid non-empty search pattern.");
 	}
 }
@@ -141,30 +140,32 @@ void ArgManager::validateArgs()
 // Getter functions
 bool ArgManager::getHelp() const
 {
-	return m_help;
+	return (m_help || !m_read_ok);
 }
 
 void ArgManager::printHelp() const
 {
-	std::cout << "Usage: xcut OPTION... < [FILE]...\n";
-	std::cout << "From each FILE, replaces text on all or selected parts of lines using PATTERN,\n";
-	std::cout << "and print all or selected parts to standard output.\n\n";
+	std::ostream& out = m_help ? std::cout : std::cerr;
 
-	std::cout << "Example: xcut -f 1,2 -x 's/\\d/<num>/' < file.txt\n\n";
+	out << "Usage: xcut OPTION... < [FILE]...\n";
+	out << "From each FILE, replaces text on all or selected parts of lines using PATTERN,\n";
+	out << "and print all or selected parts to standard output.\n\n";
 
-	std::cout << "Options\n";
-	std::cout << "  -d DELIM    Use DELIM instead of SPACE for field delimiter.\n";
-	std::cout << "  -f FIELDS   Comma separated list of fiels to print (1-index base).\n";
-	std::cout << "  -p FIELDS   Comma separated list of fiels to apply PATTERN to. (1-index base)\n";
-	std::cout << "  -x PATTERN  sed like Regular Expression to be applied on all or specified parts.\n";
-	std::cout << "  -i          Apply PATTERN to inversed -p list\n";
-	std::cout << "  -s          Output lines sorted in the original order.\n";
-	std::cout << "  -h          This help\n";
+	out << "Example: xcut -f 1,2 -x 's/\\d/<num>/' < file.txt\n\n";
 
-	std::cout << "All options are optional, excep in these cases:\n";
-	std::cout << "    If option -p is used, option -x becomes mandatory\n";
-	std::cout << "    If option -i is used, option -x becomes mandatory\n";
-	std::cout << std::flush;
+	out << "Options\n";
+	out << "  -d DELIM    Use DELIM instead of SPACE for field delimiter.\n";
+	out << "  -f FIELDS   Comma separated list of fiels to print (1-index base).\n";
+	out << "  -p FIELDS   Comma separated list of fiels to apply PATTERN to. (1-index base)\n";
+	out << "  -x PATTERN  sed like Regular Expression to be applied on all or specified parts.\n";
+	out << "  -i          Apply PATTERN to inversed -p list\n";
+	out << "  -s          Output lines sorted in the original order.\n";
+	out << "  -h          This help\n";
+
+	out << "\nAll options are optional, except in these cases:\n";
+	out << "    If option -p is used, option -x becomes mandatory\n";
+	out << "    If option -i is used, option -x becomes mandatory\n";
+	out << std::flush;
 }
 
 std::string ArgManager::getDelimiter() const
