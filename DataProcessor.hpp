@@ -8,53 +8,34 @@
 #include <thread>
 #include <unordered_map>
 
+#include "DataReader.hpp"
 #include "Line.hpp"
 
 class DataProcessor {
 public:
-	static DataProcessor& getInstance();
-	void readLines();
+	DataProcessor(DataReader& reader);
 	void processLines(const ArgManager& arg_manager);
 	void printOutput(const ArgManager& arg_manager);
 
 private:
-	std::queue<std::string> m_lines_in;
+	DataReader& m_reader;
 	std::unordered_map<unsigned, std::string> m_lines_out;
-	std::mutex m_mtx_lines_in;
 	std::mutex m_mtx_lines_out;
-	bool m_still_reading = true;
 	bool m_still_processing = true;
 
 private:
 	void processLine(unsigned line_num, std::string src_line, const ArgManager& arg_manager);
-	void enqueueInput(const std::string& input);
 	void enqueueOutput(unsigned line_num, const std::string& output);
-	std::string dequeueInput();
 	std::string dequeueOutput();
 	std::string getOutputLine(unsigned line_num);
 	void printOutputSorted();
 	void printOutputUnsorted();
 	unsigned countLines(unsigned line_num);
-
-private:
-	DataProcessor() {}
 };
 
-DataProcessor& DataProcessor::getInstance()
+DataProcessor::DataProcessor(DataReader& reader) :
+	m_reader(reader)
 {
-	static DataProcessor instance;
-	return instance;
-}
-
-void DataProcessor::readLines()
-{
-	std::string line;
-	while(std::getline(std::cin, line)) {
-		enqueueInput(line);
-	}
-	m_still_reading = false;
-
-	return;
 }
 
 void DataProcessor::processLines(const ArgManager& arg_manager)
@@ -63,10 +44,10 @@ void DataProcessor::processLines(const ArgManager& arg_manager)
 	std::vector<std::thread> threads;
 
 	// If stopped reading we may still have some items to process
-	while (m_still_reading || m_lines_in.size() > 0) {
-		if (m_lines_in.size() > 0) {
-			auto val = dequeueInput();
-			threads.push_back(std::thread(&DataProcessor::processLine, this, line_num++, val, arg_manager));
+	while (!m_reader.done() || m_reader.size() > 0) {
+		if (m_reader.size() > 0) {
+			auto val = m_reader.get();
+			threads.push_back(std::thread(&DataProcessor::processLine, this, line_num++, val, std::ref(arg_manager)));
 		}
 	}
 
@@ -130,26 +111,11 @@ void DataProcessor::printOutputUnsorted()
 	return;
 }
 
-void DataProcessor::enqueueInput(const std::string& input)
-{
-	std::lock_guard<std::mutex> guard(m_mtx_lines_in);
-	m_lines_in.push(input);
-	return;
-}
-
 void DataProcessor::enqueueOutput(unsigned line_num, const std::string& output)
 {
 	std::lock_guard<std::mutex> guard(m_mtx_lines_out);
 	m_lines_out[line_num] = output;
 	return;
-}
-
-std::string DataProcessor::dequeueInput()
-{
-	std::lock_guard<std::mutex> guard(m_mtx_lines_in);
-	auto val = m_lines_in.front();
-	m_lines_in.pop();
-	return val;
 }
 
 std::string DataProcessor::dequeueOutput()
