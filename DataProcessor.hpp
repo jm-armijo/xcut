@@ -46,7 +46,7 @@ void DataProcessor::processLines(const ArgManager& arg_manager)
 	// If stopped reading we may still have some items to process
 	while (!m_reader.done() || m_reader.size() > 0) {
 		if (m_reader.size() > 0) {
-			auto val = m_reader.get();
+			auto val = m_reader.pull();
 			threads.push_back(std::thread(&DataProcessor::processLine, this, line_num++, val, std::ref(arg_manager)));
 		}
 	}

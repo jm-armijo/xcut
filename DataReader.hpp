@@ -2,34 +2,32 @@
 #define JM_DATA_READER_HPP
 
 #include <iostream>
-#include <mutex>
-#include <queue>
 #include <thread>
+
+#include "LineQueue.hpp"
 
 class DataReader {
 public:
-	static DataReader& read();
-	std::string get();
-	bool done() const;
-	unsigned size() const;
-	~DataReader();
+    static DataReader& read();
+    std::string pull();
+    bool done() const;
+    bool size() const;
+    ~DataReader();
 
 private:
-	std::thread m_thread;
-	std::queue<std::string> m_lines;
-	std::mutex m_mtx_lines;
-	bool m_still_reading = true;
+    LineQueue m_queue;
+    std::thread m_thread;
+    bool m_done = false;
 
 private:
-	DataReader();
-	void push(const std::string& input);
-	void readStream();
+    DataReader();
+    void readStream();
 };
 
 DataReader& DataReader::read()
 {
-	static DataReader instance;
-	return instance;
+    static DataReader instance;
+    return instance;
 }
 
 DataReader::DataReader()
@@ -39,43 +37,38 @@ DataReader::DataReader()
 
 DataReader::~DataReader()
 {
-	m_thread.join();
-}
+    // Wait until all input is read
+    while(!done());
 
-bool DataReader::done() const
-{
-	return !m_still_reading;
-}
-
-unsigned DataReader::size() const
-{
-	return m_lines.size();
+    if (m_thread.joinable()) {
+        m_thread.join();
+    }
 }
 
 void DataReader::readStream()
 {
-	std::string line;
-	while(std::getline(std::cin, line)) {
-		push(line);
-	}
-	m_still_reading = false;
+    std::string line;
+    while(std::getline(std::cin, line)) {
+        m_queue.push(line);
+    }
+    m_done = true;
 
-	return;
+    return;
 }
 
-void DataReader::push(const std::string& input)
+bool DataReader::done() const
 {
-	std::lock_guard<std::mutex> guard(m_mtx_lines);
-	m_lines.push(input);
-	return;
+    return m_done;
 }
 
-std::string DataReader::get()
+bool DataReader::size() const
 {
-	std::lock_guard<std::mutex> guard(m_mtx_lines);
-	auto val = m_lines.front();
-	m_lines.pop();
-	return val;
+    return m_queue.size();
+}
+
+std::string DataReader::pull()
+{
+    return m_queue.pull();
 }
 
 #endif //JM_DATA_READER_HPP
