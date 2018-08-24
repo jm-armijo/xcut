@@ -4,7 +4,7 @@
 #include <iostream>
 #include <thread>
 
-#include "LineQueue.hpp"
+#include "DataQueue.hpp"
 
 class DataReader {
 public:
@@ -15,7 +15,7 @@ public:
     ~DataReader();
 
 private:
-    LineQueue m_queue;
+    DataQueue m_queue;
     std::thread m_thread;
     bool m_done = false;
 
