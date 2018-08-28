@@ -1,44 +1,44 @@
 #ifndef JM_DATA_READER_HPP
 #define JM_DATA_READER_HPP
 
-#include <iostream>
 #include <thread>
-
 #include "DataQueue.hpp"
 
 class DataReader {
 public:
-    static DataReader& read();
+    DataReader(DataQueue& queue);
+    void do_job();
     std::string pull();
-    bool done() const;
-    bool size() const;
     ~DataReader();
 
 private:
-    DataQueue m_queue;
+    DataQueue& m_queue;
     std::thread m_thread;
-    bool m_done = false;
 
 private:
-    DataReader();
+    DataReader() = delete;
     void readStream();
 };
 
-DataReader& DataReader::read()
+DataReader::DataReader(DataQueue& queue) :
+    m_queue(queue)
 {
-    static DataReader instance;
-    return instance;
 }
 
-DataReader::DataReader()
+void DataReader::do_job()
 {
-	m_thread = std::thread(&DataReader::readStream, this);
+    m_thread = std::thread(&DataReader::readStream, this);
 }
+
 
 DataReader::~DataReader()
 {
     // Wait until all input is read
-    while(!done());
+    while(true) {
+        if (m_queue.is_eof()) {
+            break;
+        }
+    }
 
     if (m_thread.joinable()) {
         m_thread.join();
@@ -51,24 +51,9 @@ void DataReader::readStream()
     while(std::getline(std::cin, line)) {
         m_queue.push(line);
     }
-    m_done = true;
+    m_queue.set_eof();
 
     return;
-}
-
-bool DataReader::done() const
-{
-    return m_done;
-}
-
-bool DataReader::size() const
-{
-    return m_queue.size();
-}
-
-std::string DataReader::pull()
-{
-    return m_queue.pull();
 }
 
 #endif //JM_DATA_READER_HPP

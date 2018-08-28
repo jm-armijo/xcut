@@ -1,33 +1,33 @@
-#include "DataProcessor.hpp"
-#include "DataReader.hpp"
 #include "ArgManager.hpp"
-#include <stdexcept>
-#include <thread>
-
+#include "DataProcessor.hpp"
+#include "DataQueue.hpp"
+#include "DataReader.hpp"
+#include "DataWriter.hpp"
 
 int main(int argc, char **argv)
 {
-	ArgManager arg_manager;
-	arg_manager.readArgs(argc, argv);
+    DataQueue queue_in;
+    DataQueue queue_out;
 
-	if (arg_manager.getHelp()) {
-		arg_manager.printHelp();
-		return 1;
-	}
+    ArgManager arg_manager;
+    arg_manager.readArgs(argc, argv);
 
-	// Read input lines
-	DataReader& reader = DataReader::read();
+    if (arg_manager.getHelp()) {
+        arg_manager.printHelp();
+        return 1;
+    }
 
-	// Process lines
-	DataProcessor processor(reader);
-	processor.processLines(arg_manager);
+    // Read input lines
+    DataReader reader(queue_in);
+    reader.do_job();
 
-	// Print output lines
-	std::thread printer = std::thread(&DataProcessor::printOutput, &processor, std::ref(arg_manager));
+    // Process lines
+    DataProcessor processor(queue_in, queue_out, arg_manager);
+    processor.do_job();
 
+    // Write output lines
+    DataWriter writer(queue_out, arg_manager);
+    writer.do_job();
 
-	// Wait for threads to finish
-	printer.join();
-
-	return 0;
+    return 0;
 }

@@ -1,6 +1,7 @@
 #ifndef JM_ARG_MANAGER_HPP
 #define JM_ARG_MANAGER_HPP
 
+#include <iostream>
 #include <regex>
 #include <tuple>
 #include <unordered_map>
