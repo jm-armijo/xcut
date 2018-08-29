@@ -18,9 +18,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
-	do_job(arg_manager);
+    do_job(arg_manager);
 
-	return 0;
+    return 0;
 }
 
 void do_job(ArgManager& arg_manager)
@@ -40,30 +40,30 @@ void do_job(ArgManager& arg_manager)
     DataWriter writer(queue_out, arg_manager);
     writer.do_job();
 
-	auto loop = true;
-	auto status = Status::reading;
-	while (loop) {
-		switch (status) {
-			case Status::reading:
-				if (reader.done()) {
-					status = Status::processing;
-				}
-				break;
-			//case processing:
-			//	if (processor.done()) {
-			//		status = writing;
-			//	}
-			//	break;
-			//case writing 
-			//	if (writer.done()) {
-			//		status = done;
-			//	}
-			//	break;
-			default:
-				loop = false;
-				break;
-		}
-	}
+    auto loop = true;
+    auto status = Status::reading;
+    while (loop) {
+        switch (status) {
+            case Status::reading:
+                if (reader.done()) {
+                    status = Status::processing;
+                }
+                break;
+            case Status::processing:
+                if (processor.done()) {
+                    status = Status::writing;
+                }
+                break;
+            case Status::writing:
+                if (writer.done()) {
+                    status = Status::done;
+                }
+                break;
+            default:
+                loop = false;
+                break;
+        }
+    }
 
     return;
 }

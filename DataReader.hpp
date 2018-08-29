@@ -9,14 +9,14 @@ class DataReader {
 public:
     DataReader(DataQueue& queue);
     void do_job();
-	bool done() const;
+    bool done() const;
     std::string pull();
     ~DataReader();
 
 private:
     DataQueue& m_queue;
     std::thread m_thread;
-	std::atomic<bool> m_done{false};
+    std::atomic<bool> m_done{false};
 
 private:
     DataReader() = delete;
@@ -35,7 +35,7 @@ void DataReader::do_job()
 
 bool DataReader::done() const
 {
-	return m_done;
+    return m_done;
 }
 
 void DataReader::readStream()
@@ -45,7 +45,7 @@ void DataReader::readStream()
         m_queue.push(line);
     }
     m_queue.set_eof();
-	m_done = true;
+    m_done = true;
 
     return;
 }
