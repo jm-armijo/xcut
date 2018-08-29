@@ -1,3 +1,6 @@
+#ifndef JM_MASTER_HPP
+#define JM_MASTER_HPP
+
 #include "ArgManager.hpp"
 #include "DataProcessor.hpp"
 #include "DataQueue.hpp"
@@ -38,9 +41,9 @@ Master::~Master()
 
 void Master::start_workers()
 {
-    m_reader->do_job();
-    m_processor->do_job();
-    m_writer->do_job();
+    m_reader->start();
+    m_processor->start();
+    m_writer->start();
 }
 
 bool Master::workers_done()
@@ -66,3 +69,4 @@ bool Master::workers_done()
     return done;
 }
 
+#endif //JM_MASTER_HPP

@@ -1,29 +1,22 @@
 #ifndef JM_DATA_WRITER_HPP
 #define JM_DATA_WRITER_HPP
 
-#include <iostream>
-#include <thread>
-
 #include "ArgManager.hpp"
 #include "DataQueue.hpp"
+#include "Worker.hpp"
 
-class DataWriter {
+class DataWriter : public Worker {
 public:
     DataWriter(DataQueue& queue, ArgManager& arg_manager);
-    void do_job();
-    bool done() const;
     void push(const std::string& value, unsigned line_num);
-    ~DataWriter();
 
 private:
     DataQueue& m_queue;
-    std::thread m_thread;
-    std::atomic<bool> m_done{false};
     ArgManager& m_arg_manager;
 
 private:
     DataWriter() = delete;
-    void writeStream();
+    void do_job();
     void printOutputSorted();
     void printOutputUnsorted();
 };
@@ -34,16 +27,6 @@ DataWriter::DataWriter(DataQueue& queue, ArgManager& arg_manager) :
 }
 
 void DataWriter::do_job()
-{
-    m_thread = std::thread(&DataWriter::writeStream, this);
-}
-
-bool DataWriter::done() const
-{
-    return m_done;
-}
-
-void DataWriter::writeStream()
 {
     while (!m_queue.is_eof() || m_queue.size() > 0) {
         if (m_arg_manager.sortOutput()) {
@@ -78,14 +61,6 @@ void DataWriter::printOutputUnsorted()
     }
 
     return;
-}
-
-DataWriter::~DataWriter()
-{
-    // Wait until all input is read
-    if (m_thread.joinable()) {
-        m_thread.join();
-    }
 }
 
 #endif //JM_DATA_WRITER_HPP
