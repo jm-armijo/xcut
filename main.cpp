@@ -4,11 +4,12 @@
 #include "DataReader.hpp"
 #include "DataWriter.hpp"
 
+enum class Status {reading, processing, writing, done};
+
+void do_job(ArgManager& arg_manager);
+
 int main(int argc, char **argv)
 {
-    DataQueue queue_in;
-    DataQueue queue_out;
-
     ArgManager arg_manager;
     arg_manager.readArgs(argc, argv);
 
@@ -16,6 +17,16 @@ int main(int argc, char **argv)
         arg_manager.printHelp();
         return 1;
     }
+
+	do_job(arg_manager);
+
+	return 0;
+}
+
+void do_job(ArgManager& arg_manager)
+{
+    DataQueue queue_in;
+    DataQueue queue_out;
 
     // Read input lines
     DataReader reader(queue_in);
@@ -29,5 +40,30 @@ int main(int argc, char **argv)
     DataWriter writer(queue_out, arg_manager);
     writer.do_job();
 
-    return 0;
+	auto loop = true;
+	auto status = Status::reading;
+	while (loop) {
+		switch (status) {
+			case Status::reading:
+				if (reader.done()) {
+					status = Status::processing;
+				}
+				break;
+			//case processing:
+			//	if (processor.done()) {
+			//		status = writing;
+			//	}
+			//	break;
+			//case writing 
+			//	if (writer.done()) {
+			//		status = done;
+			//	}
+			//	break;
+			default:
+				loop = false;
+				break;
+		}
+	}
+
+    return;
 }
