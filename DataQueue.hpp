@@ -9,7 +9,7 @@ class DataQueue {
 public:
     void        push(const std::string& value);
     void        push(const std::string& value, unsigned line_num);
-    std::string pull();
+    unsigned    nextKey();
     std::string pull(unsigned line_num);
     unsigned    size();
     bool        exists(unsigned key);
@@ -39,20 +39,19 @@ void DataQueue::push(const std::string& value, unsigned line_num)
     return;
 }
 
-std::string DataQueue::pull()
+unsigned DataQueue::nextKey()
 {
     std::lock_guard<std::mutex> guard(m_mtx_queue);
     auto it = m_queue.begin();
-    auto value = it->second;
-    m_queue.erase(m_queue.begin());
 
-    return value;
+    return it->first;
 }
 
 std::string DataQueue::pull(unsigned line_num)
 {
     std::lock_guard<std::mutex> guard(m_mtx_queue);
-    auto value = m_queue.at(line_num);
+
+    auto value = m_queue[line_num];
     m_queue.erase(line_num);
 
     return value;

@@ -8,13 +8,12 @@ int main(int argc, char **argv)
 
     if (arg_manager.getHelp()) {
         arg_manager.printHelp();
-        return 1;
-    }
+    } else {
+        Master master(arg_manager);
+        master.start_workers();
 
-    Master master(arg_manager);
-    master.start_workers();
-
-    while(!master.workers_done());
+        while(!master.workers_done());
+   }
 
     return 0;
 }

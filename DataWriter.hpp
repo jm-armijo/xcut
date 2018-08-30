@@ -56,8 +56,9 @@ void DataWriter::printOutputSorted()
 void DataWriter::printOutputUnsorted()
 {
     if (m_queue.size() > 0) {
-        auto val = m_queue.pull();
-        std::cout << val << "\n";
+        auto line_num = m_queue.nextKey();
+        auto value    = m_queue.pull(line_num);
+        std::cout << value << "\n";
     }
 
     return;

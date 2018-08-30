@@ -30,14 +30,14 @@ DataProcessor::DataProcessor(DataQueue& queue_in, DataQueue& queue_out, ArgManag
 
 void DataProcessor::do_job()
 {
-    auto line_num = 0u;
 
     // If stopped reading we may still have some items to process
     while (!m_queue_in.is_eof() || m_queue_in.size() > 0) {
         if (m_queue_in.size() > 0) {
-            auto val = m_queue_in.pull();
+            auto line_num = m_queue_in.nextKey();
+            auto value    = m_queue_in.pull(line_num);
             ++m_count_started;
-            m_threads.push_back(std::thread(&DataProcessor::processLine, this, line_num++, val));
+            m_threads.push_back(std::thread(&DataProcessor::processLine, this, line_num, value));
         }
     }
 
