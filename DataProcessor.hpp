@@ -17,10 +17,12 @@ private:
     std::atomic<unsigned> m_count_started{0};
     std::atomic<unsigned> m_count_ended{0};
     ArgManager& m_arg_manager;
+    std::mutex m_mtx_queue;
 
 private:
     void do_job();
-    void processLine(unsigned line_num, std::string src_line);
+    void processLines();
+    void processLine();
 };
 
 DataProcessor::DataProcessor(const std::atomic<Status> &status, DataQueue& queue_in, DataQueue& queue_out, ArgManager& arg_manager) :
@@ -28,31 +30,50 @@ DataProcessor::DataProcessor(const std::atomic<Status> &status, DataQueue& queue
 {
 }
 
+
+void DataProcessor::processLines()
+{
+    while (!m_done) {
+        processLine();
+    }
+}
+
 void DataProcessor::do_job()
 {
-    // If stopped reading we may still have some items to process
-    while (m_status != Status::processing || m_queue_in.size() > 0) {
-        if (m_queue_in.size() > 0) {
-            auto line_num = m_queue_in.nextKey();
-            auto value    = m_queue_in.pull(line_num);
-            ++m_count_started;
-            m_threads.push_back(std::thread(&DataProcessor::processLine, this, line_num, value));
-        }
+    auto num_threads = 3;
+    for(auto i = 0; i<num_threads; ++i) {
+        m_threads.push_back(std::thread(&DataProcessor::processLines, this));
     }
 
-    while (m_count_started > m_count_ended);
+    while (m_status == Status::reading);
+    while (m_queue_in.size() > 0 || m_count_started > m_count_ended);
 
     m_done = true;
 
     return;
 }
 
-void DataProcessor::processLine(unsigned line_num, std::string src_line)
+void DataProcessor::processLine()
 {
-    Line line(src_line);
-    std::string new_line = line.process(m_arg_manager);
-    m_queue_out.push(new_line, line_num);
-    ++m_count_ended;
+    auto process = false;
+    auto line_num = 0u;
+    auto src_line = std::string();
+
+    m_mtx_queue.lock();
+    if (m_queue_in.size() > 0) {
+        ++m_count_started;
+        line_num = m_queue_in.nextKey();
+        src_line = m_queue_in.pull(line_num);
+        process = true;
+    }
+    m_mtx_queue.unlock();
+
+    if (process) {
+        Line line(src_line);
+        std::string new_line = line.process(m_arg_manager);
+        m_queue_out.push(new_line, line_num);
+        ++m_count_ended;
+    }
 
     return;
 }
