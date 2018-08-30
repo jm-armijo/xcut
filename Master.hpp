@@ -10,26 +10,26 @@
 
 class Master {
 private:
-    enum class Status {reading, processing, writing};
     DataQueue m_queue_in;
     DataQueue m_queue_out;
     DataReader    *m_reader;
     DataProcessor *m_processor;
     DataWriter    *m_writer;
-    Status m_status = Status::reading;
+    std::atomic<Status> m_status {Status::reading};
 
 public:
     Master(ArgManager& arg_manager);
     void start_workers();
     bool workers_done();
+    Status getStatus() const;
     ~Master();
 };
 
 Master::Master(ArgManager& arg_manager)
 {
-    m_reader    = new DataReader(m_queue_in);
-    m_processor = new DataProcessor(m_queue_in, m_queue_out, arg_manager);
-    m_writer    = new DataWriter(m_queue_out, arg_manager);
+    m_reader    = new DataReader(m_status, m_queue_in);
+    m_processor = new DataProcessor(m_status, m_queue_in, m_queue_out, arg_manager);
+    m_writer    = new DataWriter(m_status, m_queue_out, arg_manager);
 }
 
 Master::~Master()

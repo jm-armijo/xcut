@@ -7,7 +7,7 @@
 
 class DataProcessor : public Worker {
 public:
-    DataProcessor(DataQueue& queue_in, DataQueue& queue_out, ArgManager& arg_manager);
+    DataProcessor(const std::atomic<Status> &status, DataQueue& queue_in, DataQueue& queue_out, ArgManager& arg_manager);
     ~DataProcessor();
 
 private:
@@ -23,16 +23,15 @@ private:
     void processLine(unsigned line_num, std::string src_line);
 };
 
-DataProcessor::DataProcessor(DataQueue& queue_in, DataQueue& queue_out, ArgManager& arg_manager) :
-    m_queue_in(queue_in), m_queue_out(queue_out), m_arg_manager(arg_manager)
+DataProcessor::DataProcessor(const std::atomic<Status> &status, DataQueue& queue_in, DataQueue& queue_out, ArgManager& arg_manager) :
+    Worker(status), m_queue_in(queue_in), m_queue_out(queue_out), m_arg_manager(arg_manager)
 {
 }
 
 void DataProcessor::do_job()
 {
-
     // If stopped reading we may still have some items to process
-    while (!m_queue_in.is_eof() || m_queue_in.size() > 0) {
+    while (m_status != Status::processing || m_queue_in.size() > 0) {
         if (m_queue_in.size() > 0) {
             auto line_num = m_queue_in.nextKey();
             auto value    = m_queue_in.pull(line_num);
@@ -44,7 +43,6 @@ void DataProcessor::do_job()
     while (m_count_started > m_count_ended);
 
     m_done = true;
-    m_queue_out.set_eof();
 
     return;
 }

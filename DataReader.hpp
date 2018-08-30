@@ -6,7 +6,7 @@
 
 class DataReader : public Worker {
 public:
-    DataReader(DataQueue& queue);
+    DataReader(const std::atomic<Status> &status, DataQueue& queue);
     std::string pull();
 
 private:
@@ -18,8 +18,8 @@ private:
     void readStream();
 };
 
-DataReader::DataReader(DataQueue& queue) :
-    m_queue(queue)
+DataReader::DataReader(const std::atomic<Status> &status, DataQueue& queue) :
+    Worker(status), m_queue(queue)
 {
 }
 
@@ -29,7 +29,6 @@ void DataReader::do_job()
     while(std::getline(std::cin, line)) {
         m_queue.push(line);
     }
-    m_queue.set_eof();
     m_done = true;
 
     return;

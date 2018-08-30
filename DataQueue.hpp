@@ -13,8 +13,6 @@ public:
     std::string pull(unsigned line_num);
     unsigned    size();
     bool        exists(unsigned key);
-    bool        is_eof() const;
-    void        set_eof();
 
 private:
     std::unordered_map<unsigned, std::string> m_queue;
@@ -69,13 +67,4 @@ bool DataQueue::exists(unsigned key)
     return m_queue.count(key) > 0;
 }
 
-bool DataQueue::is_eof() const
-{
-    return m_eof;
-}
-
-void DataQueue::set_eof()
-{
-    m_eof = true;
-}
 #endif //JM_LINE_QUEUE_HPP

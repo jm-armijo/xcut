@@ -7,7 +7,7 @@
 
 class DataWriter : public Worker {
 public:
-    DataWriter(DataQueue& queue, ArgManager& arg_manager);
+    DataWriter(const std::atomic<Status> &status, DataQueue& queue, ArgManager& arg_manager);
     void push(const std::string& value, unsigned line_num);
 
 private:
@@ -21,14 +21,14 @@ private:
     void printOutputUnsorted();
 };
 
-DataWriter::DataWriter(DataQueue& queue, ArgManager& arg_manager) :
-    m_queue(queue), m_arg_manager(arg_manager)
+DataWriter::DataWriter(const std::atomic<Status> &status, DataQueue& queue, ArgManager& arg_manager) :
+    Worker(status), m_queue(queue), m_arg_manager(arg_manager)
 {
 }
 
 void DataWriter::do_job()
 {
-    while (!m_queue.is_eof() || m_queue.size() > 0) {
+    while (m_status != Status::writing || m_queue.size() > 0) {
         if (m_arg_manager.sortOutput()) {
             printOutputSorted();
         } else {
