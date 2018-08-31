@@ -40,8 +40,8 @@ void DataProcessor::processLines()
 
 void DataProcessor::do_job()
 {
-    auto num_threads = 3;
-    for(auto i = 0; i<num_threads; ++i) {
+    auto num_threads = std::thread::hardware_concurrency();
+    for(auto i = 0u; i<num_threads; ++i) {
         m_threads.push_back(std::thread(&DataProcessor::processLines, this));
     }
 
