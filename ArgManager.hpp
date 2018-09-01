@@ -3,70 +3,57 @@
 
 #include <iostream>
 #include <regex>
-#include <tuple>
-#include <unordered_map>
 #include <vector>
 
-enum class State {inv, arg, val};
-enum class Argument {h, d, f, p, i, x, s};
+#include "Arguments.hpp"
 
 class ArgManager {
 public:
-    // Entry point to start reading and processing arguments
-    void readArgs(int argc, char **argv);
-
-    // Getter functions
-    bool getHelp() const;
+    ArgManager();
+    bool processArgs(int argc, char **argv);
+    Arguments getArgs() const;
     void printHelp() const;
-    std::string getDelimiter() const;
-    std::string getRegExSearch() const;
-    std::string getRegExReplace() const;
-    std::vector<unsigned> getRegExFields() const;
-    std::vector<unsigned> getFields() const;
-    bool getInverseRegExFields() const;
-    bool sortOutput() const {return m_sort;}
 
 private:
-    // Stores the overal status of the argument reading operation
-    bool m_read_ok = true;
-
-    // Options storage
-    bool m_help = false;
-    bool m_re_invert_fields = false;
-    bool m_sort = false;
-    std::string m_delimiter = " ";
-    std::string m_regex;
-    std::string m_re_search;
-    std::string m_re_replace;
-    std::vector<unsigned> m_re_fields;
-    std::vector<unsigned> m_fields;
+    Arguments m_args;
+    bool m_status_ok = true;
+    enum class State {inv, arg, val};
+    const std::vector<std::string> m_unary = {"-h", "-i", "-s"};
+    const std::vector<std::string> m_binary = {"-d", "-f", "-p", "-x"};
 
 private:
-    // Methods to read arguments
-    bool isUnaryOption(const std::string& option) const;
-    bool isBinaryOption(const std::string& option) const;
-    void setValue(const std::string& option, const std::string& value);
+    bool isUnaryArgument(const std::string& option) const;
+    bool isBinaryArgument(const std::string& option) const;
     void flagError(const std::string& msg);
-    void validateArgs();
-
-    // Methods to process arguments
-    std::vector<unsigned> splitFields(const std::string& arg_val) const;
-    std::tuple<std::string, std::string> splitRegex(const std::string& arg_val) const;
-
+    void validate();
+    std::vector<std::string> splitRegex(const std::string& arg_val) const;
 };
 
-void ArgManager::readArgs(int argc, char **argv)
+ArgManager::ArgManager()
+{
+    // Set default arg values
+    m_args.set("-h", "0");
+    m_args.set("-i", "0");
+    m_args.set("-s", "0");
+    m_args.set("-d", " ");
+    m_args.set("-f", "");
+    m_args.set("-p", "");
+    m_args.set("-x", "");
+}
+
+bool ArgManager::processArgs(int argc, char **argv)
 {
     auto state = State::arg;
-    std::string option = "";
+    auto option = std::string();
+    auto value = std::string();
 
     for(auto i=1; i<argc; ++i) {
         if (state == State::arg) {
 
             option = argv[i];
-            if (isUnaryOption(option)) {
-                setValue(option, "1");
-            } else if (isBinaryOption(option)) {
+            if (isUnaryArgument(option)) {
+                m_args.set(option, "1");
+            } else if (isBinaryArgument(option)) {
                 state = State::val;
             } else {
                 flagError("Invalid option '" + option + "'");
@@ -74,79 +61,81 @@ void ArgManager::readArgs(int argc, char **argv)
             }
 
         } else {
-            setValue(option, argv[i]);
+            value = argv[i];
+            if (option == "-x") {
+                auto regex = splitRegex(value);
+                m_args.set("-xs", regex[0]);
+                m_args.set("-xr", regex[1]);
+            }
+            m_args.set(option, value);
             state = State::arg;
         }
     }
 
-    if (m_read_ok && state == State::val) {
+    if (m_status_ok && state == State::val) {
         flagError("Expected value for option '" + option + "'");
-    } else if (m_read_ok) {
-        validateArgs();
     }
+
+    validate();
+
+    return m_status_ok;
 }
 
-bool ArgManager::isUnaryOption(const std::string& option) const
+Arguments ArgManager::getArgs() const
 {
-    static const std::vector<std::string> unary = {"-h", "-i", "-s"};
-    return (std::find(unary.begin(), unary.end(), option) != unary.end());
+    return m_args;
 }
 
-bool ArgManager::isBinaryOption(const std::string& option) const
+bool ArgManager::isUnaryArgument(const std::string& option) const
 {
-    static const std::vector<std::string> binary = {"-d", "-f", "-p", "-x"};
-    return (std::find(binary.begin(), binary.end(), option) != binary.end());
+    return (std::find(m_unary.begin(), m_unary.end(), option) != m_unary.end());
 }
 
-void ArgManager::setValue(const std::string& option, const std::string& value)
+bool ArgManager::isBinaryArgument(const std::string& option) const
 {
-    if (option == "-h") {
-        m_help = (value == "1");
-    } else if (option == "-i") {
-        m_re_invert_fields = (value == "1");
-    } else if (option == "-s") {
-        m_sort = (value == "1");
-    } else if (option == "-d") {
-        m_delimiter = value;
-    } else if (option == "-f") {
-        m_fields = splitFields(value);
-    } else if (option == "-p") {
-        m_re_fields = splitFields(value);
-    } else if (option == "-x") {
-        m_regex = value;
-        std::tie(m_re_search, m_re_replace) = splitRegex(value);
-    } else {
-        std::runtime_error("Unhandled option '" + option + "'");
-    }
+    return (std::find(m_binary.begin(), m_binary.end(), option) != m_binary.end());
 }
 
 void ArgManager::flagError(const std::string& msg)
 {
     std::cerr << "xcut: " << msg << "\n" << std::endl;
-    m_read_ok = false;
+    m_status_ok = false;
 }
 
-void ArgManager::validateArgs()
+void ArgManager::validate()
 {
-    if (m_re_fields.size() > 0 && m_regex == "") {
-        flagError("Option -p requires option -x.");
-    } else if (m_re_invert_fields && m_re_fields.size() == 0) {
-        flagError("Option -i requires option -p.");
-    } else if (m_regex != "" && m_re_search == "") {
-        flagError("Option -x requires a valid non-empty search pattern.");
+    for (const auto& arg : m_binary) {
+        if (m_status_ok) {
+            auto value = m_args.get(arg);
+            if (arg == "-d") {
+                if (value == "") {
+                    flagError("Option " + arg + " does not accept empty value.");
+                }
+            } else if (arg == "-f" || arg == "-p") {
+                if (value != "" && !std::regex_match (value, std::regex("^[1-9]\\d*(,[1-9]\\d*)*$") )) {
+                    flagError("Option " + arg + "expects a comma separated list of integers");
+                }
+            } else if (arg == "-x") {
+                if (value != "" && m_args.get("-xs") == "") {
+                    flagError("Search pattern '" + value + "' in option '" + arg + "' cannot be empty.");
+                }
+            }
+        }
+    }
+
+    if (m_status_ok) {
+        if (m_args.get("-i") == "1" && m_args.get("-p") == "") {
+            flagError("Option -i requires option -p with non-empty value.");
+        } else if (m_args.get("-p") != "" && m_args.get("-x") == "") {
+            flagError("Option -p requires option -x with non-empty value.");
+        }
     }
 }
 
 
-// Getter functions
-bool ArgManager::getHelp() const
-{
-    return (m_help || !m_read_ok);
-}
-
 void ArgManager::printHelp() const
 {
-    std::ostream& out = m_help ? std::cout : std::cerr;
+    std::ostream& out = m_args.get("-h") == "1" ? std::cout : std::cerr;
 
     out << "Usage: xcut OPTION... < [FILE]...\n";
     out << "From each FILE, replaces text on all or selected parts of lines using PATTERN,\n";
@@ -169,53 +158,8 @@ void ArgManager::printHelp() const
     out << std::flush;
 }
 
-std::string ArgManager::getDelimiter() const
-{
-    return m_delimiter;
-}
 
-std::vector<unsigned> ArgManager::getFields() const
-{
-    return m_fields;
-}
-
-std::vector<unsigned> ArgManager::getRegExFields() const
-{
-    return m_re_fields;
-}
-
-std::string ArgManager::getRegExSearch() const
-{
-    return m_re_search;
-}
-
-std::string ArgManager::getRegExReplace() const
-{
-    return m_re_replace;
-}
-
-bool ArgManager::getInverseRegExFields() const
-{
-    return m_re_invert_fields;
-}
-
-std::vector<unsigned> ArgManager::splitFields(const std::string& arg_val) const
-{
-    auto pos_start = 0u;
-    auto pos_end   = std::string::npos;
-
-    std::vector<unsigned> fields;
-    while ((pos_end = arg_val.find(",", pos_start)) != std::string::npos) {
-        auto val = std::stoul(arg_val.substr(pos_start, (pos_end-pos_start)));
-        fields.push_back(val);
-        pos_start = pos_end+1;
-    }
-    fields.push_back(std::stoi(arg_val.substr(pos_start, (pos_end-pos_start))));
-    
-    return fields;
-}
-
-std::tuple<std::string, std::string> ArgManager::splitRegex(const std::string& arg_val) const
+std::vector<std::string> ArgManager::splitRegex(const std::string& arg_val) const
 {
     static const std::regex match_re("s/(.*)/(.*)/");
 
@@ -237,7 +181,7 @@ std::tuple<std::string, std::string> ArgManager::splitRegex(const std::string& a
         replace = parts[2];
     }
 
-    return std::make_tuple(search, replace);
+    return std::vector<std::string>({search, replace});
 }
 
 #endif //JM_ARG_MANAGER_HPP

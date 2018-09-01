@@ -18,18 +18,18 @@ private:
     std::atomic<Status> m_status {Status::reading};
 
 public:
-    Master(ArgManager& arg_manager);
+    Master(const Arguments& args);
     void start_workers();
     bool workers_done();
     Status getStatus() const;
     ~Master();
 };
 
-Master::Master(ArgManager& arg_manager)
+Master::Master(const Arguments& args)
 {
     m_reader    = new DataReader(m_status, m_queue_in);
-    m_processor = new DataProcessor(m_status, m_queue_in, m_queue_out, arg_manager);
-    m_writer    = new DataWriter(m_status, m_queue_out, arg_manager);
+    m_processor = new DataProcessor(m_status, m_queue_in, m_queue_out, args);
+    m_writer    = new DataWriter(m_status, m_queue_out, args);
 }
 
 Master::~Master()

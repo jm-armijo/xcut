@@ -15,8 +15,7 @@ class Line {
 public:
     Line() {}
     Line(const str& line);
-    void split(const str& delimiter);
-    std::string process(const ArgManager& arg_manager);
+    std::string process(const Arguments& args);
     str join(const str& delimiter, const uvec& fields);
 
 private:
@@ -32,6 +31,8 @@ private:
     void processPart(int part_num, const str& re_search, const str& re_replace);
     void processPart(int part_num, const str& regex);
     bool find(unsigned needle, const uvec& haystack) const;
+    void split(const str& delimiter);
+    std::vector<unsigned> splitFields(const std::string& arg_val) const;
 };
 
 Line::Line(const str& line) : m_line(line)
@@ -57,14 +58,14 @@ unsigned Line::getNumParts() const
     return m_parts.size();
 }
 
-std::string Line::process(const ArgManager& arg_manager)
+std::string Line::process(const Arguments& args)
 {
-    auto delimiter  = arg_manager.getDelimiter();
-    auto fields     = arg_manager.getFields();
-    auto re_fields  = arg_manager.getRegExFields();
-    auto re_search  = arg_manager.getRegExSearch();
-    auto re_replace = arg_manager.getRegExReplace();
-    auto inverse    = arg_manager.getInverseRegExFields();
+    static const auto fields     = splitFields(args.get("-f"));
+    static const auto re_fields  = splitFields(args.get("-p"));
+    static const auto delimiter  = args.get("-d");
+    static const auto inverse    = args.get("-i");
+    static const auto re_search  = args.get("-xs");
+    static const auto re_replace = args.get("-xr");
 
     // split the word
     split(delimiter);
@@ -75,9 +76,9 @@ std::string Line::process(const ArgManager& arg_manager)
         if (re_fields.size() == 0) {
             process = true;
         } else if (find(i+1, re_fields)) {
-            process = !inverse;
+            process = (inverse == "0");
         } else {
-            process = inverse;
+            process = (inverse == "1");
         }
 
         if (process) {
@@ -132,6 +133,22 @@ void Line::joinAll(const str& delimiter)
         m_joined += (i == 0) ? "" : delimiter;
         m_joined += m_parts[i];
     }
+}
+
+std::vector<unsigned> Line::splitFields(const std::string& arg_val) const
+{
+    auto pos_start = 0u;
+    auto pos_end   = std::string::npos;
+
+    std::vector<unsigned> fields;
+    while ((pos_end = arg_val.find(",", pos_start)) != std::string::npos) {
+        auto val = std::stoul(arg_val.substr(pos_start, (pos_end-pos_start)));
+        fields.push_back(val);
+        pos_start = pos_end+1;
+    }
+    fields.push_back(std::stoi(arg_val.substr(pos_start, (pos_end-pos_start))));
+
+    return fields;
 }
 
 #endif //JM_LINE_HPP

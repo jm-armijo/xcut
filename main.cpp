@@ -4,16 +4,23 @@
 int main(int argc, char **argv)
 {
     ArgManager arg_manager;
-    arg_manager.readArgs(argc, argv);
 
-    if (arg_manager.getHelp()) {
+    if (!arg_manager.processArgs(argc, argv)) {
+        // Something went wrong. Show help and exit.
         arg_manager.printHelp();
     } else {
-        Master master(arg_manager);
-        master.start_workers();
+        auto args = arg_manager.getArgs();
 
-        while(!master.workers_done());
-   }
+        // Help requested. Show help and exit.
+        if (args.get("-h") == "1") {
+            arg_manager.printHelp();
+        } else {
+            Master master(args);
+            master.start_workers();
+
+            while(!master.workers_done());
+       }
+    }
 
     return 0;
 }

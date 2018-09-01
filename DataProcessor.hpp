@@ -7,7 +7,7 @@
 
 class DataProcessor : public Worker {
 public:
-    DataProcessor(const std::atomic<Status> &status, DataQueue& queue_in, DataQueue& queue_out, ArgManager& arg_manager);
+    DataProcessor(const std::atomic<Status> &status, DataQueue& queue_in, DataQueue& queue_out, const Arguments& args);
     ~DataProcessor();
 
 private:
@@ -16,7 +16,7 @@ private:
     std::vector<std::thread> m_threads;
     std::atomic<unsigned> m_count_started{0};
     std::atomic<unsigned> m_count_ended{0};
-    ArgManager& m_arg_manager;
+    const Arguments& m_args;
     std::mutex m_mtx_queue;
 
 private:
@@ -25,8 +25,8 @@ private:
     void processLine();
 };
 
-DataProcessor::DataProcessor(const std::atomic<Status> &status, DataQueue& queue_in, DataQueue& queue_out, ArgManager& arg_manager) :
-    Worker(status), m_queue_in(queue_in), m_queue_out(queue_out), m_arg_manager(arg_manager)
+DataProcessor::DataProcessor(const std::atomic<Status> &status, DataQueue& queue_in, DataQueue& queue_out, const Arguments& args) :
+    Worker(status), m_queue_in(queue_in), m_queue_out(queue_out), m_args(args)
 {
 }
 
@@ -70,7 +70,7 @@ void DataProcessor::processLine()
 
     if (process) {
         Line line(src_line);
-        std::string new_line = line.process(m_arg_manager);
+        std::string new_line = line.process(m_args);
         m_queue_out.push(new_line, line_num);
         ++m_count_ended;
     }
