@@ -10,7 +10,7 @@ class Worker {
 public:
     virtual void start();
     virtual bool done() const;
-    Worker(const std::atomic<Status>& status);
+    Worker(const std::atomic<Status>& status, const Arguments& args);
     virtual ~Worker();
 
 protected:
@@ -18,9 +18,11 @@ protected:
     std::atomic<bool> m_done{false};
     virtual void do_job() = 0;
     const std::atomic<Status>& m_status;
+    const Arguments& m_args;
 };
 
-Worker::Worker(const std::atomic<Status>& status) : m_status(status)
+Worker::Worker(const std::atomic<Status>& status, const Arguments& args) :
+    m_status(status), m_args(args)
 {
 }
 

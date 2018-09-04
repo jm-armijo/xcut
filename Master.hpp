@@ -27,9 +27,9 @@ public:
 
 Master::Master(const Arguments& args)
 {
-    m_reader    = new DataReader(m_status, m_queue_in);
-    m_processor = new DataProcessor(m_status, m_queue_in, m_queue_out, args);
-    m_writer    = new DataWriter(m_status, m_queue_out, args);
+    m_reader    = new DataReader   (m_status, args, m_queue_in);
+    m_processor = new DataProcessor(m_status, args, m_queue_in, m_queue_out);
+    m_writer    = new DataWriter   (m_status, args, m_queue_out);
 }
 
 Master::~Master()

@@ -6,7 +6,7 @@
 
 class DataReader : public Worker {
 public:
-    DataReader(const std::atomic<Status> &status, DataQueue& queue);
+    DataReader(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue);
     std::string pull();
 
 private:
@@ -18,8 +18,8 @@ private:
     void readStream();
 };
 
-DataReader::DataReader(const std::atomic<Status> &status, DataQueue& queue) :
-    Worker(status), m_queue(queue)
+DataReader::DataReader(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue) :
+    Worker(status, args), m_queue(queue)
 {
 }
 

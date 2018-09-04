@@ -7,7 +7,7 @@
 
 class DataProcessor : public Worker {
 public:
-    DataProcessor(const std::atomic<Status> &status, DataQueue& queue_in, DataQueue& queue_out, const Arguments& args);
+    DataProcessor(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue_in, DataQueue& queue_out);
     ~DataProcessor();
 
 private:
@@ -16,7 +16,6 @@ private:
     std::vector<std::thread> m_threads;
     std::atomic<unsigned> m_count_started{0};
     std::atomic<unsigned> m_count_ended{0};
-    const Arguments& m_args;
     std::mutex m_mtx_queue;
 
 private:
@@ -25,8 +24,8 @@ private:
     void processLine();
 };
 
-DataProcessor::DataProcessor(const std::atomic<Status> &status, DataQueue& queue_in, DataQueue& queue_out, const Arguments& args) :
-    Worker(status), m_queue_in(queue_in), m_queue_out(queue_out), m_args(args)
+DataProcessor::DataProcessor(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue_in, DataQueue& queue_out) :
+    Worker(status, args), m_queue_in(queue_in), m_queue_out(queue_out)
 {
 }
 
