@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <regex>
+#include <sys/stat.h>
 #include <vector>
 
 #include "Arguments.hpp"
@@ -17,15 +18,19 @@ public:
 private:
     Arguments m_args;
     bool m_status_ok = true;
-    enum class State {inv, arg, val};
+    enum class State {inv, arg, val, file};
     const std::vector<std::string> m_unary = {"-h", "-i", "-s"};
     const std::vector<std::string> m_binary = {"-d", "-f", "-p", "-x"};
+    void addFile(const std::string& file_name);
+    bool is_file(const std::string& path) const;
+    bool is_dir (const std::string& path) const;
 
 private:
     bool isUnaryArgument(const std::string& option) const;
     bool isBinaryArgument(const std::string& option) const;
     void flagError(const std::string& msg);
     void validate();
+    bool validateList(const std::string& list) const;
     std::vector<std::string> splitRegex(const std::string& arg_val) const;
 };
 
@@ -56,11 +61,11 @@ bool ArgManager::processArgs(int argc, char **argv)
             } else if (isBinaryArgument(option)) {
                 state = State::val;
             } else {
-                flagError("Invalid option '" + option + "'");
-                i = argc; // exit the loop
+                addFile(option);
+                state = State::file;
             }
 
-        } else {
+        } else if (state == State::val) {
             value = argv[i];
             if (option == "-x") {
                 auto regex = splitRegex(value);
@@ -69,6 +74,11 @@ bool ArgManager::processArgs(int argc, char **argv)
             }
             m_args.set(option, value);
             state = State::arg;
+        } else if (state == State::file) {
+            addFile(argv[i]);
+        } else {
+            flagError("Cannot read arguments: unexpected value.");
+            i = argc;
         }
     }
 
@@ -79,6 +89,13 @@ bool ArgManager::processArgs(int argc, char **argv)
     validate();
 
     return m_status_ok;
+}
+
+void ArgManager::addFile(const std::string& file_name)
+{
+    static auto file_count = 0u;
+    auto name = "file" + std::to_string(file_count++);
+    m_args.set(name, file_name);
 }
 
 Arguments ArgManager::getArgs() const
@@ -104,40 +121,54 @@ void ArgManager::flagError(const std::string& msg)
 
 void ArgManager::validate()
 {
-    for (const auto& arg : m_binary) {
-        if (m_status_ok) {
-            auto value = m_args.get(arg);
-            if (arg == "-d") {
-                if (value == "") {
-                    flagError("Option " + arg + " does not accept empty value.");
-                }
-            } else if (arg == "-f" || arg == "-p") {
-                if (value != "" && !std::regex_match (value, std::regex("^[1-9]\\d*(,[1-9]\\d*)*$") )) {
-                    flagError("Option " + arg + "expects a comma separated list of integers");
-                }
-            } else if (arg == "-x") {
-                if (value != "" && m_args.get("-xs") == "") {
-                    flagError("Search pattern '" + value + "' in option '" + arg + "' cannot be empty.");
-                }
+    if (m_args.get("-d") == "") {
+        flagError("Option -d does not accept empty value.");
+    } else if (!validateList(m_args.get("-f"))) {
+        flagError("Option -f expects a comma separated list of integers");
+    } else if (!validateList(m_args.get("-p"))) {
+        flagError("Option -p expects a comma separated list of integers");
+    } else if (m_args.get("-x") != "" && m_args.get("-xs") == "") {
+        flagError("Search pattern '" + m_args.get("-x") + "' in option -x cannot be empty.");
+    } else if (m_args.get("-i") == "1" && m_args.get("-p") == "") {
+        flagError("Option -i requires option -p with non-empty value.");
+    } else if (m_args.get("-p") != "" && m_args.get("-x") == "") {
+        flagError("Option -p requires option -x with non-empty value.");
+    } else {
+        auto file_names = m_args.find_all_matching("file");
+        for (const auto& file_name : file_names) {
+            if (!is_file(file_name)) {
+                flagError("Cannot open file " + file_name + " for reading.");
+                break;
             }
-        }
-    }
-
-    if (m_status_ok) {
-        if (m_args.get("-i") == "1" && m_args.get("-p") == "") {
-            flagError("Option -i requires option -p with non-empty value.");
-        } else if (m_args.get("-p") != "" && m_args.get("-x") == "") {
-            flagError("Option -p requires option -x with non-empty value.");
         }
     }
 }
 
+bool ArgManager::is_file(const std::string& path) const
+{
+    struct stat buf;
+    stat(path.c_str(), &buf);
+    return S_ISREG(buf.st_mode);
+}
+
+bool ArgManager::is_dir(const std::string& path) const
+{
+    struct stat buf;
+    stat(path.c_str(), &buf);
+    return S_ISDIR(buf.st_mode);
+}
+
+bool ArgManager::validateList(const std::string& list) const
+{
+    auto regex    = std::regex("^[1-9]\\d*(,[1-9]\\d*)*$");
+    return (list == "" || std::regex_match(list, regex));
+}
 
 void ArgManager::printHelp() const
 {
     std::ostream& out = m_args.get("-h") == "1" ? std::cout : std::cerr;
 
-    out << "Usage: xcut OPTION... < [FILE]...\n";
+    out << "Usage: xcut OPTION... [FILE]...\n";
     out << "From each FILE, replaces text on all or selected parts of lines using PATTERN,\n";
     out << "and print all or selected parts to standard output.\n\n";
 
@@ -157,7 +188,6 @@ void ArgManager::printHelp() const
     out << "    If option -i is used, option -x becomes mandatory\n";
     out << std::flush;
 }
-
 
 std::vector<std::string> ArgManager::splitRegex(const std::string& arg_val) const
 {
