@@ -1,22 +1,27 @@
-#include "InputReader.hpp"
 #include "ArgManager.hpp"
-#include <stdexcept>
-
+#include "Master.hpp"
 
 int main(int argc, char **argv)
 {
-	ArgManager arg_manager;
-	arg_manager.readArgs(argc, argv);
+    ArgManager arg_manager;
 
-	if (arg_manager.getHelp()) {
-		arg_manager.printHelp();
-		return 1;
-	}
+    if (!arg_manager.processArgs(argc, argv)) {
+        // Something went wrong. Show help and exit.
+        arg_manager.printHelp();
+    } else {
+        auto args = arg_manager.getArgs();
 
-	InputReader reader = InputReader::getInstance();
-	while (reader.readLine()) {
-		reader.processLine(arg_manager);
-	}
+        // Help requested. Show help and exit.
+        if (args.get("-h") == "1") {
+            arg_manager.printHelp();
+        } else {
+            Master master(args);
+            master.start_workers();
 
-	return 0;
+            while(!master.workers_done());
+       }
+    }
+
+    return 0;
 }
+
