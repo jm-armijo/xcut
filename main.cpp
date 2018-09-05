@@ -16,9 +16,9 @@ int main(int argc, char **argv)
             arg_manager.printHelp();
         } else {
             Master master(args);
-            master.start_workers();
+            master.startWorkers();
 
-            while(!master.workers_done());
+            while(!master.workersDone());
        }
     }
 

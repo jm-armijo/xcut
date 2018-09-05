@@ -19,7 +19,7 @@ private:
     std::mutex m_mtx_queue;
 
 private:
-    void do_job();
+    void doJob();
     void processLines();
     void processLine();
 };
@@ -37,7 +37,7 @@ void DataProcessor::processLines()
     }
 }
 
-void DataProcessor::do_job()
+void DataProcessor::doJob()
 {
     auto num_threads = std::thread::hardware_concurrency();
     for(auto i = 0u; i<num_threads; ++i) {

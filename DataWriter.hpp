@@ -15,7 +15,7 @@ private:
 
 private:
     DataWriter() = delete;
-    void do_job();
+    void doJob();
     void printOutputSorted();
     void printOutputUnsorted();
 };
@@ -25,7 +25,7 @@ DataWriter::DataWriter(const std::atomic<Status> &status, const Arguments& args,
 {
 }
 
-void DataWriter::do_job()
+void DataWriter::doJob()
 {
     while (m_status != Status::writing || m_queue.size() > 0) {
         if (m_args.get("-s") == "1") {

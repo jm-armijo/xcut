@@ -17,9 +17,8 @@ private:
     std::vector<std::string> m_files;
 
 private:
-    void do_job();
+    void doJob();
     DataReader() = delete;
-    void readStream();
     void readFromStream(std::istream& in);
 };
 
@@ -29,7 +28,7 @@ DataReader::DataReader(const std::atomic<Status> &status, const Arguments& args,
     m_files = m_args.find_all_matching("file");
 }
 
-void DataReader::do_job()
+void DataReader::doJob()
 {
     if (m_files.empty()) {
         std::istream& in = std::cin;
