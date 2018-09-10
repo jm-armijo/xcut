@@ -135,18 +135,18 @@ void Line::joinAll(const str& delimiter)
     }
 }
 
-std::vector<unsigned> Line::splitFields(const std::string& arg_val) const
+std::vector<unsigned> Line::splitFields(const std::string& s) const
 {
-    auto pos_start = 0u;
-    auto pos_end   = std::string::npos;
-
     std::vector<unsigned> fields;
-    while ((pos_end = arg_val.find(",", pos_start)) != std::string::npos) {
-        auto val = std::stoul(arg_val.substr(pos_start, (pos_end-pos_start)));
-        fields.push_back(val);
-        pos_start = pos_end+1;
-    }
-    fields.push_back(std::stoi(arg_val.substr(pos_start, (pos_end-pos_start))));
+
+    auto regex    = std::regex(",");
+    auto begin = std::sregex_token_iterator(s.begin(), s.end(), regex, -1);
+    auto end   = std::sregex_token_iterator();
+    std::for_each(begin, end, [&](const std::string& m) {
+        if (!m.empty()) {
+            fields.push_back(std::stoul(m));
+        }
+    });
 
     return fields;
 }

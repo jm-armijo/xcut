@@ -12,15 +12,15 @@ class Master {
 private:
     DataQueue m_queue_in;
     DataQueue m_queue_out;
-    DataReader    *m_reader;
-    DataProcessor *m_processor;
-    DataWriter    *m_writer;
+    Worker    *m_reader;
+    Worker    *m_processor;
+    Worker    *m_writer;
     std::atomic<Status> m_status {Status::reading};
 
 public:
     Master(const Arguments& args);
-    void start_workers();
-    bool workers_done();
+    void startWorkers();
+    bool workersDone();
     Status getStatus() const;
     ~Master();
 };
@@ -39,14 +39,14 @@ Master::~Master()
     delete m_reader;
 }
 
-void Master::start_workers()
+void Master::startWorkers()
 {
     m_reader->start();
     m_processor->start();
     m_writer->start();
 }
 
-bool Master::workers_done()
+bool Master::workersDone()
 {
     auto done = false;
     switch (m_status) {

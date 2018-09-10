@@ -16,9 +16,11 @@ public:
 protected:
     std::thread m_thread;
     std::atomic<bool> m_done{false};
-    virtual void do_job() = 0;
     const std::atomic<Status>& m_status;
     const Arguments& m_args;
+
+protected:
+    virtual void doJob() = 0;
 };
 
 Worker::Worker(const std::atomic<Status>& status, const Arguments& args) :
@@ -33,7 +35,7 @@ bool Worker::done() const
 
 void Worker::start()
 {
-    m_thread = std::thread(&Worker::do_job, this);
+    m_thread = std::thread(&Worker::doJob, this);
 }
 
 Worker::~Worker()
