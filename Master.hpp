@@ -1,6 +1,7 @@
 #ifndef JM_MASTER_HPP
 #define JM_MASTER_HPP
 
+#include <memory>
 #include "ArgManager.hpp"
 #include "DataProcessor.hpp"
 #include "DataQueue.hpp"
@@ -12,9 +13,9 @@ class Master {
 private:
     DataQueue m_queue_in;
     DataQueue m_queue_out;
-    Worker    *m_reader;
-    Worker    *m_processor;
-    Worker    *m_writer;
+    std::shared_ptr<Worker> m_reader;
+    std::shared_ptr<Worker> m_processor;
+    std::shared_ptr<Worker> m_writer;
     std::atomic<Status> m_status {Status::reading};
 
 public:
@@ -22,21 +23,13 @@ public:
     void startWorkers();
     bool workersDone();
     Status getStatus() const;
-    ~Master();
 };
 
 Master::Master(const Arguments& args)
 {
-    m_reader    = new DataReader   (m_status, args, m_queue_in);
-    m_processor = new DataProcessor(m_status, args, m_queue_in, m_queue_out);
-    m_writer    = new DataWriter   (m_status, args, m_queue_out);
-}
-
-Master::~Master()
-{
-    delete m_writer;
-    delete m_processor;
-    delete m_reader;
+    m_reader    = std::make_shared<DataReader>   (m_status, args, m_queue_in);
+    m_processor = std::make_shared<DataProcessor>(m_status, args, m_queue_in, m_queue_out);
+    m_writer    = std::make_shared<DataWriter>   (m_status, args, m_queue_out);
 }
 
 void Master::startWorkers()
