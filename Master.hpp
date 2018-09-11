@@ -13,9 +13,7 @@ class Master {
 private:
     DataQueue m_queue_in;
     DataQueue m_queue_out;
-    std::shared_ptr<Worker> m_reader;
-    std::shared_ptr<Worker> m_processor;
-    std::shared_ptr<Worker> m_writer;
+    std::vector<std::shared_ptr<Worker>> m_workers;
     std::atomic<Status> m_status {Status::reading};
 
 public:
@@ -27,36 +25,36 @@ public:
 
 Master::Master(const Arguments& args)
 {
-    m_reader    = std::make_shared<DataReader>   (m_status, args, m_queue_in);
-    m_processor = std::make_shared<DataProcessor>(m_status, args, m_queue_in, m_queue_out);
-    m_writer    = std::make_shared<DataWriter>   (m_status, args, m_queue_out);
+    m_workers.push_back(std::make_shared<DataReader>   (m_status, args, m_queue_in));
+    m_workers.push_back(std::make_shared<DataProcessor>(m_status, args, m_queue_in, m_queue_out));
+    m_workers.push_back(std::make_shared<DataWriter>   (m_status, args, m_queue_out));
 }
 
 void Master::startWorkers()
 {
-    m_reader->start();
-    m_processor->start();
-    m_writer->start();
+    for (const auto& worker : m_workers) {
+        worker->start();
+    }
 }
 
 bool Master::workersDone()
 {
     auto done = false;
-    switch (m_status) {
-        case Status::reading:
-            if (m_reader->done()) {
-                m_status = Status::processing;
-            }
+    auto done_count = std::count_if(m_workers.begin(), m_workers.end(), [](std::shared_ptr<Worker>& w){return w->done();});
+
+    switch (done_count) {
+        case 3:
+            done = true;
             break;
-        case Status::processing:
-            if (m_processor->done()) {
-                m_status = Status::writing;
-            }
+        case 2:
+            m_status = Status::writing;
             break;
-        case Status::writing:
-            if (m_writer->done()) {
-                done = true;
-            }
+        case 1:
+            m_status = Status::processing;
+            break;
+        default:
+            m_status = Status::reading;
+            break;
     }
 
     return done;
