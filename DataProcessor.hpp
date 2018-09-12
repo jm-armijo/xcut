@@ -20,7 +20,6 @@ private:
 
 private:
     void doJob();
-    void processLines();
     void processLine();
 };
 
@@ -29,25 +28,19 @@ DataProcessor::DataProcessor(const std::atomic<Status> &status, const Arguments&
 {
 }
 
-
-void DataProcessor::processLines()
+void DataProcessor::doJob()
 {
     while (!m_done) {
         processLine();
+
+        if (m_status == Status::reading) {
+            m_done = false;
+        } else if (m_queue_in.size() > 0) {
+            m_done = false;
+        } else if (m_count_started > 0 && m_count_started == m_count_ended) {
+            m_done = true;
+        }
     }
-}
-
-void DataProcessor::doJob()
-{
-    auto num_threads = std::thread::hardware_concurrency();
-    for(auto i = 0u; i<num_threads; ++i) {
-        m_threads.push_back(std::thread(&DataProcessor::processLines, this));
-    }
-
-    while (m_status == Status::reading);
-    while (m_queue_in.size() > 0 || m_count_started > m_count_ended);
-
-    m_done = true;
 
     return;
 }
