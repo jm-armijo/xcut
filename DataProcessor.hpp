@@ -7,7 +7,7 @@
 
 class DataProcessor : public Worker {
 public:
-    DataProcessor(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue_in, DataQueue& queue_out);
+    DataProcessor(const Arguments& args, DataQueue& queue_in, DataQueue& queue_out);
     ~DataProcessor();
 
 private:
@@ -23,8 +23,8 @@ private:
     void processLine();
 };
 
-DataProcessor::DataProcessor(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue_in, DataQueue& queue_out) :
-    Worker(status, args), m_queue_in(queue_in), m_queue_out(queue_out)
+DataProcessor::DataProcessor(const Arguments& args, DataQueue& queue_in, DataQueue& queue_out) :
+    Worker(args), m_queue_in(queue_in), m_queue_out(queue_out)
 {
 }
 
@@ -33,11 +33,9 @@ void DataProcessor::doJob()
     while (!m_done) {
         processLine();
 
-        if (m_status == Status::reading) {
-            m_done = false;
-        } else if (m_queue_in.size() > 0) {
-            m_done = false;
-        } else if (m_count_started > 0 && m_count_started == m_count_ended) {
+        if (m_status == Status::processing && m_count_started == m_count_ended && m_queue_in.size() == 0) {
+            // Note that we can finish even if m_count_started == 0.
+            // This means that another worker(s) did all the job.
             m_done = true;
         }
     }

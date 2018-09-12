@@ -9,7 +9,7 @@
 
 class DataReader : public Worker {
 public:
-    DataReader(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue);
+    DataReader(const Arguments& args, DataQueue& queue);
     std::string pull();
 
 private:
@@ -22,8 +22,8 @@ private:
     void readFromStream(std::istream& in);
 };
 
-DataReader::DataReader(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue) :
-    Worker(status, args), m_queue(queue)
+DataReader::DataReader(const Arguments& args, DataQueue& queue) :
+    Worker(args), m_queue(queue)
 {
     m_files = m_args.find_all_matching("file");
 }

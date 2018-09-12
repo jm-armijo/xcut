@@ -7,7 +7,7 @@
 
 class DataWriter : public Worker {
 public:
-    DataWriter(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue);
+    DataWriter(const Arguments& args, DataQueue& queue);
     void push(const std::string& value, unsigned line_num);
 
 private:
@@ -20,8 +20,8 @@ private:
     void printOutputUnsorted();
 };
 
-DataWriter::DataWriter(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue) :
-    Worker(status, args), m_queue(queue)
+DataWriter::DataWriter(const Arguments& args, DataQueue& queue) :
+    Worker(args), m_queue(queue)
 {
 }
 
