@@ -13,7 +13,8 @@ public:
     ArgManager();
     bool processArgs(int argc, char **argv);
     Arguments getArgs() const;
-    void printHelp() const;
+    void showHelp() const;
+    bool isHelpRequested() const;
 
 private:
     Arguments m_args;
@@ -164,9 +165,22 @@ bool ArgManager::validateList(const std::string& list) const
     return (list == "" || std::regex_match(list, regex));
 }
 
-void ArgManager::printHelp() const
+bool ArgManager::isHelpRequested() const
 {
-    std::ostream& out = m_args.get("-h") == "1" ? std::cout : std::cerr;
+    auto is_requested = false;
+
+    if (!m_status_ok) {
+        is_requested = true;
+    } else if (m_args.get("-h") == "1") {
+        is_requested = true;
+    }
+
+    return is_requested;
+}
+
+void ArgManager::showHelp() const
+{
+    std::ostream& out = m_status_ok ? std::cout : std::cerr;
 
     out << "Usage: xcut OPTION... [FILE]...\n";
     out << "From each FILE, replaces text on all or selected parts of lines using PATTERN,\n";
