@@ -10,7 +10,6 @@
 class DataReader : public Worker {
 public:
     DataReader(const Arguments& args, DataQueue& queue);
-    std::string pull();
 
 private:
     DataQueue& m_queue;
@@ -45,9 +44,10 @@ void DataReader::doJob()
 
 void DataReader::readFromStream(std::istream& in)
 {
-    std::string line;
-    while(std::getline(in, line)) {
-        m_queue.push(line);
+    auto line_value = std::string();
+    while(std::getline(in, line_value)) {
+        auto line = Line(line_value);
+        m_queue.push(Line(line));
     }
 
     return;

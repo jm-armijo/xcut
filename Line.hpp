@@ -15,14 +15,18 @@ class Line {
 public:
     Line() {}
     Line(const str& line);
-    std::string process(const Arguments& args);
-    str join(const str& delimiter, const uvec& fields);
+    void        process(const Arguments& args);
+    std::string join(const str& delimiter, const uvec& fields);
+    std::string getValue() const;
+    unsigned    getNum()   const;
+    bool        isEmpty()  const;
 
 private:
-    unsigned m_line_num;
-    str m_line;
-    str m_joined;
+    std::string m_line   = std::string();
+    std::string m_joined = std::string();
     std::vector<str> m_parts;
+    bool     m_empty     = true;
+    unsigned m_line_num  = 0u;
 
 private:
     void joinList(const str& delimiter, const uvec& fields);
@@ -35,7 +39,7 @@ private:
     std::vector<unsigned> splitFields(const std::string& arg_val) const;
 };
 
-Line::Line(const str& line) : m_line(line)
+Line::Line(const str& line) : m_line(line), m_empty(false)
 {
     static auto line_num = 0;
     m_line_num = ++line_num;
@@ -53,12 +57,27 @@ void Line::split(const str& delimiter)
     m_parts.push_back(m_line.substr(pos_start, (pos_end-pos_start)));
 }
 
+std::string Line::getValue() const
+{
+    return m_line;
+}
+
+bool Line::isEmpty() const
+{
+    return m_empty;
+}
+
+unsigned Line::getNum() const
+{
+    return m_line_num;
+}
+
 unsigned Line::getNumParts() const
 {
     return m_parts.size();
 }
 
-std::string Line::process(const Arguments& args)
+void Line::process(const Arguments& args)
 {
     static const auto fields     = splitFields(args.get("-f"));
     static const auto re_fields  = splitFields(args.get("-p"));
@@ -87,7 +106,7 @@ std::string Line::process(const Arguments& args)
     }
 
     // join requested fields and save string
-    return join(delimiter, fields);
+    m_line = join(delimiter, fields);
 }
 
 bool Line::find(unsigned needle, const uvec& haystack) const

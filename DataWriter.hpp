@@ -42,11 +42,11 @@ void DataWriter::doJob()
 
 void DataWriter::printOutputSorted()
 {
-    static auto line_num = 0u;
-    if (m_queue.exists(line_num)) {
-        auto val = m_queue.pull(line_num);
+    static auto line_num = 1u;
+    auto line = m_queue.pull(line_num);
+    if (!line.isEmpty()) {
         ++line_num;
-        std::cout << val << "\n";
+        std::cout << line.getValue() << "\n";
     }
 
     return;
@@ -54,10 +54,10 @@ void DataWriter::printOutputSorted()
 
 void DataWriter::printOutputUnsorted()
 {
-    if (m_queue.size() > 0) {
-        auto line_num = m_queue.nextKey();
-        auto value    = m_queue.pull(line_num);
-        std::cout << value << "\n";
+    auto line = m_queue.pullNext();
+
+    if (!line.isEmpty()) {
+        std::cout << line.getValue() << "\n";
     }
 
     return;
