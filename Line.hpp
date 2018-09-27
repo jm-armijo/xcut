@@ -90,9 +90,11 @@ void Line::process(const Arguments& args)
     split(delimiter);
 
     for (auto i = 0u; i<getNumParts(); ++i) {
-        bool process = false;
+        auto process = false;
 
-        if (re_fields.size() == 0) {
+        if (re_search.empty()) {
+            process = false;
+        } else if (re_fields.size() == 0) {
             process = true;
         } else if (find(i+1, re_fields)) {
             process = (inverse == "0");

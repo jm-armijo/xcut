@@ -45,6 +45,8 @@ ArgManager::ArgManager()
     m_args.set("-f", "");
     m_args.set("-p", "");
     m_args.set("-x", "");
+    m_args.set("-xs", "");
+    m_args.set("-xr", "");
 }
 
 bool ArgManager::processArgs(int argc, char **argv)
