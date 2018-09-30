@@ -8,7 +8,6 @@
 class DataWriter : public Worker {
 public:
     DataWriter(const Arguments& args, DataQueue& queue);
-    void push(const std::string& value, unsigned line_num);
 
 private:
     DataQueue& m_queue;

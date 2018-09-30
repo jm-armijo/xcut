@@ -21,8 +21,8 @@ private:
     std::unordered_map<unsigned,Line> m_queue;
     std::mutex m_mtx_queue;
     std::atomic<bool> m_eof{false};
-    std::atomic<unsigned> m_count_in;
-    std::atomic<unsigned> m_count_out;
+    std::atomic<unsigned> m_count_in  {0u};
+    std::atomic<unsigned> m_count_out {0u};
 };
 
 void DataQueue::push(const Line& line)

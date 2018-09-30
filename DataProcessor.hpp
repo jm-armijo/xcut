@@ -12,10 +12,9 @@ public:
 private:
     DataQueue& m_queue_in;
     DataQueue& m_queue_out;
-    std::atomic<unsigned> m_count_started{0};
-    std::atomic<unsigned> m_count_ended{0};
 
 private:
+    DataProcessor() = delete;
     void doJob();
     void processLine();
 };
@@ -30,9 +29,7 @@ void DataProcessor::doJob()
     while (!m_done) {
         processLine();
 
-        if (m_status == Status::processing && m_count_started == m_count_ended && m_queue_in.size() == 0) {
-            // Note that we can finish even if m_count_started == 0.
-            // This means that another worker(s) did all the job.
+        if (m_status == Status::processing && m_queue_in.getCountIn() == m_queue_out.getCountIn()) {
             m_done = true;
         }
     }
@@ -45,10 +42,8 @@ void DataProcessor::processLine()
     auto line = m_queue_in.pullNext();
 
     if (!line.isEmpty()) {
-        ++m_count_started;
         line.process(m_args);
         m_queue_out.push(line);
-        ++m_count_ended;
     }
 
     return;
