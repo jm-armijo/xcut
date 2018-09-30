@@ -5,55 +5,74 @@
 #include <mutex>
 #include <unordered_map>
 
+#include "Line.hpp"
+
 class DataQueue {
 public:
-    void        push(const std::string& value);
-    void        push(const std::string& value, unsigned line_num);
-    unsigned    nextKey();
-    std::string pull(unsigned line_num);
+    void        push(const Line& line);
+    Line        pull(unsigned line_num);
+    Line        pullNext();
     unsigned    size();
     bool        exists(unsigned key);
+    unsigned    getCountIn() const;
+    unsigned    getCountOut() const;
 
 private:
-    std::unordered_map<unsigned, std::string> m_queue;
+    std::unordered_map<unsigned,Line> m_queue;
     std::mutex m_mtx_queue;
     std::atomic<bool> m_eof{false};
+    std::atomic<unsigned> m_count_in  {0u};
+    std::atomic<unsigned> m_count_out {0u};
 };
 
-void DataQueue::push(const std::string& value)
+void DataQueue::push(const Line& line)
 {
-    static auto line_num = 0u;
     std::lock_guard<std::mutex> guard(m_mtx_queue);
-    m_queue.insert({line_num++, value});
+    m_queue.insert({line.getNum(), line});
+    ++m_count_in;
 
     return;
 }
 
-void DataQueue::push(const std::string& value, unsigned line_num)
-{
-    std::lock_guard<std::mutex> guard(m_mtx_queue);
-    m_queue.insert({line_num, value});
-
-    return;
-}
-
-unsigned DataQueue::nextKey()
-{
-    std::lock_guard<std::mutex> guard(m_mtx_queue);
-    auto it = m_queue.begin();
-
-    return it->first;
-}
-
-std::string DataQueue::pull(unsigned line_num)
+Line DataQueue::pull(unsigned line_num)
 {
     std::lock_guard<std::mutex> guard(m_mtx_queue);
 
-    auto value = m_queue[line_num];
-    m_queue.erase(line_num);
+    auto line = Line();
+    if (m_queue.count(line_num) > 0) {
+        line = m_queue[line_num];
+        m_queue.erase(line_num);
+        ++m_count_out;
+    }
 
-    return value;
+    return line;
 }
+
+Line DataQueue::pullNext()
+{
+    std::lock_guard<std::mutex> guard(m_mtx_queue);
+
+    auto line = Line();
+    if (m_queue.size() > 0) {
+        auto it = m_queue.begin();
+        line = it->second;
+        m_queue.erase(it->first);
+        ++m_count_out;
+    }
+
+    return line;
+}
+
+unsigned DataQueue::getCountIn() const
+{
+    return m_count_in;
+}
+
+unsigned DataQueue::getCountOut() const
+{
+    return m_count_out;
+}
+
 
 unsigned DataQueue::size()
 {

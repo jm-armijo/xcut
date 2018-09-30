@@ -7,84 +7,46 @@
 
 class DataProcessor : public Worker {
 public:
-    DataProcessor(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue_in, DataQueue& queue_out);
-    ~DataProcessor();
+    DataProcessor(const Arguments& args, DataQueue& queue_in, DataQueue& queue_out);
 
 private:
     DataQueue& m_queue_in;
     DataQueue& m_queue_out;
-    std::vector<std::thread> m_threads;
-    std::atomic<unsigned> m_count_started{0};
-    std::atomic<unsigned> m_count_ended{0};
-    std::mutex m_mtx_queue;
 
 private:
+    DataProcessor() = delete;
     void doJob();
-    void processLines();
     void processLine();
 };
 
-DataProcessor::DataProcessor(const std::atomic<Status> &status, const Arguments& args, DataQueue& queue_in, DataQueue& queue_out) :
-    Worker(status, args), m_queue_in(queue_in), m_queue_out(queue_out)
+DataProcessor::DataProcessor(const Arguments& args, DataQueue& queue_in, DataQueue& queue_out) :
+    Worker(args), m_queue_in(queue_in), m_queue_out(queue_out)
 {
-}
-
-
-void DataProcessor::processLines()
-{
-    while (!m_done) {
-        processLine();
-    }
 }
 
 void DataProcessor::doJob()
 {
-    auto num_threads = std::thread::hardware_concurrency();
-    for(auto i = 0u; i<num_threads; ++i) {
-        m_threads.push_back(std::thread(&DataProcessor::processLines, this));
+    while (!m_done) {
+        processLine();
+
+        if (m_status == Status::processing && m_queue_in.getCountIn() == m_queue_out.getCountIn()) {
+            m_done = true;
+        }
     }
-
-    while (m_status == Status::reading);
-    while (m_queue_in.size() > 0 || m_count_started > m_count_ended);
-
-    m_done = true;
 
     return;
 }
 
 void DataProcessor::processLine()
 {
-    auto process = false;
-    auto line_num = 0u;
-    auto src_line = std::string();
+    auto line = m_queue_in.pullNext();
 
-    m_mtx_queue.lock();
-    if (m_queue_in.size() > 0) {
-        ++m_count_started;
-        line_num = m_queue_in.nextKey();
-        src_line = m_queue_in.pull(line_num);
-        process = true;
-    }
-    m_mtx_queue.unlock();
-
-    if (process) {
-        Line line(src_line);
-        std::string new_line = line.process(m_args);
-        m_queue_out.push(new_line, line_num);
-        ++m_count_ended;
+    if (!line.isEmpty()) {
+        line.process(m_args);
+        m_queue_out.push(line);
     }
 
     return;
-}
-
-DataProcessor::~DataProcessor()
-{
-    // Wait for all threads to finish.
-    for (auto& t : m_threads) {
-        if (t.joinable()) {
-            t.join();
-        }
-    }
 }
 
 #endif //JM_DATA_PROCESSOR_HPP

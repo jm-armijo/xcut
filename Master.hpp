@@ -1,6 +1,9 @@
 #ifndef JM_MASTER_HPP
 #define JM_MASTER_HPP
 
+#include <algorithm>
+#include <memory>
+
 #include "ArgManager.hpp"
 #include "DataProcessor.hpp"
 #include "DataQueue.hpp"
@@ -12,61 +15,83 @@ class Master {
 private:
     DataQueue m_queue_in;
     DataQueue m_queue_out;
-    Worker    *m_reader;
-    Worker    *m_processor;
-    Worker    *m_writer;
-    std::atomic<Status> m_status {Status::reading};
+    std::vector<std::shared_ptr<Worker>> m_workers;
+    Status m_status = Status::reading;
+    const unsigned m_num_reading_workers;
+    const unsigned m_num_process_workers;
+    const unsigned m_num_writing_workers;
 
 public:
     Master(const Arguments& args);
     void startWorkers();
     bool workersDone();
-    Status getStatus() const;
-    ~Master();
+
+private:
+    void checkStatus();
+    void notifyWorkers();
+
 };
 
-Master::Master(const Arguments& args)
+Master::Master(const Arguments& args) :
+    m_num_reading_workers(1),
+    m_num_process_workers(std::max(std::thread::hardware_concurrency() -2, 1u)),
+    m_num_writing_workers(1)
 {
-    m_reader    = new DataReader   (m_status, args, m_queue_in);
-    m_processor = new DataProcessor(m_status, args, m_queue_in, m_queue_out);
-    m_writer    = new DataWriter   (m_status, args, m_queue_out);
-}
 
-Master::~Master()
-{
-    delete m_writer;
-    delete m_processor;
-    delete m_reader;
+    // Spawn Reader
+    m_workers.push_back(std::make_shared<DataReader>(args, m_queue_in));
+
+    // Spawn Processors
+    for (auto i = 0u; i<m_num_process_workers; ++i) {
+        m_workers.push_back(std::make_shared<DataProcessor>(args, m_queue_in, m_queue_out));
+    }
+
+    // Spawn Writer
+    m_workers.push_back(std::make_shared<DataWriter>(args, m_queue_out));
 }
 
 void Master::startWorkers()
 {
-    m_reader->start();
-    m_processor->start();
-    m_writer->start();
+    for (const auto& worker : m_workers) {
+        worker->start();
+    }
+}
+
+void Master::notifyWorkers()
+{
+    for (const auto& worker : m_workers) {
+        worker->update(m_status);
+    }
+}
+
+void Master::checkStatus()
+{
+    static const auto expected_reading    = m_num_reading_workers;
+    static const auto expected_processing = expected_reading    + m_num_process_workers;
+    static const auto expected_writing    = expected_processing + m_num_writing_workers;
+
+    // Workers are not "done" until the workers that feed them with data are done.
+    auto done_count = std::count_if(m_workers.begin(), m_workers.end(), [](std::shared_ptr<Worker>& w){return w->done();});
+
+    Status prev_status = m_status;
+    if (m_status == Status::reading && done_count == expected_reading) {
+        m_status = Status::processing;
+    } else if (m_status == Status::processing && done_count == expected_processing) {
+        m_status = Status::writing;
+    } else if (m_status == Status::writing && done_count == expected_writing) {
+        m_status = Status::done;
+    }
+
+    // Notify workers only if the status changed
+    if (prev_status != m_status) {
+        notifyWorkers();
+    }
 }
 
 bool Master::workersDone()
 {
-    auto done = false;
-    switch (m_status) {
-        case Status::reading:
-            if (m_reader->done()) {
-                m_status = Status::processing;
-            }
-            break;
-        case Status::processing:
-            if (m_processor->done()) {
-                m_status = Status::writing;
-            }
-            break;
-        case Status::writing:
-            if (m_writer->done()) {
-                done = true;
-            }
-    }
-
-    return done;
+    checkStatus();
+    return m_status == Status::done;
 }
 
 #endif //JM_MASTER_HPP

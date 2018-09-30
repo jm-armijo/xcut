@@ -4,28 +4,34 @@
 #include <atomic>
 #include <thread>
 
-enum class Status {reading, processing, writing};
+enum class Status {reading, processing, writing, done};
 
 class Worker {
 public:
     virtual void start();
     virtual bool done() const;
-    Worker(const std::atomic<Status>& status, const Arguments& args);
+    Worker(const Arguments& args);
+    virtual void update(const Status& status);
     virtual ~Worker();
 
 protected:
     std::thread m_thread;
     std::atomic<bool> m_done{false};
-    const std::atomic<Status>& m_status;
+    std::atomic<Status> m_status{Status::reading};
     const Arguments& m_args;
 
 protected:
     virtual void doJob() = 0;
 };
 
-Worker::Worker(const std::atomic<Status>& status, const Arguments& args) :
-    m_status(status), m_args(args)
+Worker::Worker(const Arguments& args) :
+    m_args(args)
 {
+}
+
+void Worker::update(const Status& status)
+{
+    m_status = status;
 }
 
 bool Worker::done() const
